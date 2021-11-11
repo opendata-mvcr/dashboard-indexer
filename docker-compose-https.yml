@@ -4,8 +4,8 @@ services:
     container_name: "es01"
     image: "docker.elastic.co/elasticsearch/elasticsearch:${VERSION}"
     ports:
-      - "9200:9200"                   # [docker host port]:[in container port]
-      - "9201:9201"                   # [docker host port]:[in container port]
+      - "9200:9200"                     # [docker host port]:[in container port]
+      - "9201:9201"                     # [docker host port]:[in container port]
     environment:
       - node.name=kifarunix-demo-es
       - cluster.name=es-docker-cluster
@@ -43,13 +43,13 @@ services:
     image: "docker.elastic.co/kibana/kibana:${VERSION}"
     depends_on: { "es01": { "condition": "service_healthy" } }
     ports:
-      - "5601:5601"                   # [docker host port]:[in container port]
+      - "5601:5601"                     # [docker host port]:[in container port]
     environment:
       SERVERNAME: localhost
       ELASTICSEARCH_URL: https://es01:9200
       ELASTICSEARCH_HOSTS: https://es01:9200
       ELASTICSEARCH_USERNAME: kibana_system
-      ELASTICSEARCH_PASSWORD: yp4eInMXVI5ondvAMBcc
+      ELASTICSEARCH_PASSWORD: $KIBANA_SYSTEM_PASS
       ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: $CERTS_DIR/ca/ca.crt
       SERVER_SSL_ENABLED: "true"
       SERVER_SSL_KEY: $CERTS_DIR/kibana01/kibana01.key
@@ -64,34 +64,34 @@ services:
     container_name: "Spring-indexer"
     environment:
 
-      elastic_host: es01              # the elastic host ip
+      elastic_host: es01                # the elastic host ip
 
-      elastic_port: '9200'            # the elastic host port
+      elastic_port: '9200'              # the elastic host port
 
-      kibana_host: kibana             # the kibana host ip
+      kibana_host: kibana               # the kibana host ip
 
-      kibana_port: '5601'             # the kibana host port
+      kibana_port: '5601'               # the kibana host port
 
       ssl_connection: 'true'            # to use SSL (HTTPS) or not
 
-      elastic_user: indexer           # the elastic username for indexer
+      elastic_user: $INDEXER_USERNAME   # the elastic username for indexer
 
-      elastic_pass: indexer.1         # the elastic password for indexer
+      elastic_pass: $INDEXER_PASSWORD   # the elastic password for indexer
 
-      river_index: 'eeardf'           # the name of the index where the rivers are created
+      river_index: 'eeardf'             # the name of the index where the rivers are created
 
-      indexer_multithreading: 'true'  # if you want multithreading; each river will have a single thread
+      indexer_multithreading: 'true'    # if you want multithreading; each river will have a single thread
 
-      threads: 4                      # in case of multithreading, the max number of concurrent working threads
+      threads: 4                        # in case of multithreading, the max number of concurrent working threads
 
-      log_level: "info"               # the log level (info or debug)
+      log_level: "info"                 # the log level (info or debug)
 
-      cache_duration_in_seconds: 10   # number of second to cache dashboard data
+      cache_duration_in_seconds: 10     # number of second to cache dashboard data
 
     tty: true
 
     ports:
-      - "8080:8080"                   # [docker host port]:[in container port]
+      - "8080:8080"                     # [docker host port]:[in container port]
     volumes:
       - indexerDB:/DB
       - certs:/certs
