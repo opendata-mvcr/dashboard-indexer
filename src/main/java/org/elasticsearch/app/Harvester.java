@@ -1578,15 +1578,14 @@ public class Harvester implements Runnable, RunningHarvester {
     /**
      * Add data to ES given a query execution service
      *
-     * @param qExec query execution service
+     * @param model executed queries transformed to model
      */
-    private void harvest(QueryExecution qExec) {
+    private void harvest(Model model) {
         boolean retry;
         int retryCount = 0;
         do {
             retry = false;
             try {
-                Model model = getModel(qExec);
                 if (!stopped) logger.info("Creating model - DONE");
 
 
@@ -1615,6 +1614,7 @@ public class Harvester implements Runnable, RunningHarvester {
         logger.info("Harvest from endpoint ---------------------------------------------------------------");
         Query query;
         QueryExecution qExec;
+        Model model= ModelFactory.createDefaultModel();
 
         for (String rdfQuery : rdfQueries) {
             if (closed) return;
@@ -1637,7 +1637,8 @@ public class Harvester implements Runnable, RunningHarvester {
             qExec = QueryExecutionFactory.sparqlService(rdfEndpoint, query);
             qExec.setTimeout(-1);
             try {
-                harvest(qExec);
+                //TODO: async
+                model.add(getModel(qExec));
             } catch (Exception e) {
                 logger.error("Exception [{}] occurred while harvesting", e.getLocalizedMessage());
                 qExec.close();
@@ -1645,7 +1646,9 @@ public class Harvester implements Runnable, RunningHarvester {
             } finally {
                 qExec.close();
             }
+
         }
+        harvest(model);
     }
 
     /**
