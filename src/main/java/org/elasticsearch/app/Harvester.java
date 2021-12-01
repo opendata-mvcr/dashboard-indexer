@@ -1635,7 +1635,7 @@ public class Harvester implements Runnable, RunningHarvester {
             }
 
             qExec = QueryExecutionFactory.sparqlService(rdfEndpoint, query);
-            qExec.setTimeout(-1);
+            qExec.setTimeout(1200000); //20min
             try {
                 //TODO: async
                 model.add(getModel(qExec));
