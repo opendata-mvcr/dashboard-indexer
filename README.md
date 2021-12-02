@@ -2,21 +2,28 @@
 
 ## HTTP
 
-### 1.  Building server application
+### 1.  Add frontend
 
-Copy production build of frontend application ([link](https://github.com/opendata-mvcr/dashboard-indexer-frontend)) to *frontend/build*   
-Build server aplication:
-
-	 mvn clean install  
+Copy production build of frontend application ([link](https://github.com/opendata-mvcr/dashboard-indexer-frontend)) to *frontend/build*
 
 ### 2. Create .env file
 
 Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing:
 
-	COMPOSE_PROJECT_NAME=**server**
-	VERSION=7.10.0
+	# Name of compose cluster of containers  
+	COMPOSE_PROJECT_NAME=**cluster-name**
+	
+	# Ports  
+	ELASTICSEARCH_PORT=**9201**
+	KIBANA_PORT=**5601**    
+	INDEXER_PORT=**8082**  
+	
+	# Aditional settings  
+	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
+	INDEXER_MAX_THREADS=4  
+	ELASTIC_STACK_VERSION=7.15.2
 
-Change variable in **double asterisks** `**var-name**`
+Change variables in **double asterisks** `**var-name**`
 
 ### 3. Create docker containers
 
@@ -26,33 +33,53 @@ Change settings in *docker-compose.yml* file.  Then create images and start cont
 
 ## HTTPS
 
-### 1.  Building server application
+### 1.  Add frontend
 
-Copy production build of frontend application ([link](https://gitlab.fel.cvut.cz/svagrmic/bp-application)) to *frontend/build*
-
-Build server aplication:
-
-	mvn clean install
+Copy production build of frontend application ([link](https://github.com/opendata-mvcr/dashboard-indexer-frontend)) to *frontend/build*
 
 ### 2. Create .env file
 
 Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing:
 
 
-	COMPOSE_PROJECT_NAME=**server**
-	CERTS_DIR=/usr/share/elasticsearch/config/certificates
-	KIBANA_SYSTEM_PASS=***kibana_system-pass***
-	INDEXER_USERNAME=***my-indexer-user***
-	INDEXER_PASSWORD=***my-indexer-pass***
-	VERSION=7.10.0
+	# Name of compose cluster of containers  
+	COMPOSE_PROJECT_NAME=**cluster-name**
+	KIBANA_SYSTEM_PASS=***kibana-system-pass*** 
+	# Kibana user credentials for indexer
+	INDEXER_USERNAME=***indexer-user***  
+	INDEXER_PASSWORD=***indexer-pass***  
+	# Kibana user credentials for public account (auto-sign-in user)  
+	PUBLIC_USERNAME=**public-user**
+	PUBLIC_PASSWORD=**public-pass**
+	  
+	# Ports  
+	ELASTICSEARCH_PORT=**9201**  
+	INDEXER_PORT=**8082**  
+	# Kibana port (for users with account)  
+	KIBANA_PORT=**5601**  
+	# Kibana port with auto-sign-in (for public display)  
+	PUBLIC_KIBANA_PORT=**6602**  
+  
+  
+	# Aditional settings  
+	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
+	INDEXER_MAX_THREADS=4  
+	ELASTIC_STACK_VERSION=7.15.2  
+	NGINX_VERSION=1.21.4
 
-**Only change variable in double asterisks `**var-name**` !!!**
+**Only change variables in double asterisks `**var-name**` !!!**
 
 ### 3. Create docker containers
 
-You can change settings in *docker-compose-https.yml* file. Then create images and start containers with command:
+Optional ( You can change settings in *docker-compose-https.yml* file. )
 
+Create Nginx config and certificates:
+
+	docker-compose -f create-nginx-conf.yml run --rm create_nginx_conf
 	docker-compose -f create-certs.yml run --rm create_certs
+
+Then create images and start containers with command:
+
 	docker-compose -f docker-compose-https.yml up -d
 
 ### 4. Initialize passwords in ES
@@ -61,11 +88,11 @@ Create initial passwords for Elasticsearch:
 
 	docker exec es01 /bin/bash -c "bin/elasticsearch-setup-passwords auto --batch --url https://localhost:9200"
 
-Save generated password `elastic` and `kibana_system`.
+Save generated passwords (mainly `elastic` and `kibana_system`).
 
 ### 5. Edit .env file
 
-Edit `.env` by changing variables in **triple asterisks**. Change `KIBANA_SYSTEM_PASS` to saved password `kibana_system`. Others as you wish.
+Edit `.env` by changing `KIBANA_SYSTEM_PASS` to saved password `kibana_system`.
 
 ### 6. Recreate docker containers
 
@@ -75,14 +102,18 @@ Recreate kibana and indexer containers.
 
 ### 7. Setup Kibana
 
+#### First login
+
 Login to Kibana (https://localhost:5601).
 
 - Username: elastic
 - Password: [saved_elastic_pass]
 
-Create you own *user* with `superuser` role in `side menu > Stack Management > Users (under Security)`. Relogin with your new superuser.
+Create you own *user* with `superuser` role in `side menu > Stack Management > Users (under Security)` and click `Create user`. Then relogin with your new superuser.
 
-Create new role (in `side menu > Stack Management > Roles (under Security)`):
+#### Create user for indexer
+
+Create new role (in `side menu > Stack Management > Roles (under Security)` and click `Create role`):
 
 1. Set `Role name` to "*indexer*"
 2. ElasticSearch
@@ -91,17 +122,38 @@ Create new role (in `side menu > Stack Management > Roles (under Security)`):
         - Indeces - `*`
         - Priviliges - `create`, `create_index`, ` manage`, `read`
 3. Kibana
-    - Add Kibana privileges
+    - Click "*Add Kibana privileges*"
         - Spaces - `* All Spaces`
         - Privileges for all features - set to `Customize`
         - Customize feature privileges
             - click `Bulk actions > None`
-            - set `Kibana > Dashboard` to `Read`
-            - now all *feature privileges* should be `None` except for the `Kibana > Dashboard`
+            - set `Analytics > Dashboard` to `Read`
+            - now all *feature privileges* should be `None` except for the `Analytics > Dashboard`
         - Click "*Create global privileges*"
 4. Click "*Create role*"
 
 Create user with credentials from `.env` for indexer (`INDEXER_USERNAME` and `INDEXER_PASSWORD`) and assign role `indexer`.
+
+#### Create public user
+
+Create new role (in `side menu > Stack Management > Roles (under Security)` and click `Create role`):
+
+1. Set `Role name` to "*public*"
+2. ElasticSearch
+    - Index privliges
+        - Indeces - `*`
+        - Priviliges - `read`, `view_index_metadata`
+3. Kibana
+    - Click "*Add Kibana privileges*"
+        - Spaces - select what you want
+        - Privileges for all features - set to `Customize`
+        - Customize feature privileges
+            - click `Bulk actions > None`
+            - set `Analytics > Dashboard`, `Analytics > Discover`, `Analytics > Canvas`, `Analytics > Maps` and `Management > Saved Objects Management` to `Read`
+        - Click "*Create global privileges*"
+4. Click "*Create role*"
+
+Create user with credentials from `.env` for indexer (`PUBLIC_USERNAME` and `PUBLIC_PASSWORD`) and assign role `public`.
 
 -----
 

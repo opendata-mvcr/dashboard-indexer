@@ -1,0 +1,44 @@
+version: '3.9'
+
+services:
+  create_nginx_conf:
+    image: "nginx:${NGINX_VERSION}"
+    container_name: create_nginx_conf
+    command: >
+      bash -c '
+        base64Pass=$$(echo -n "${PUBLIC_USERNAME}:${PUBLIC_PASSWORD}" | base64)
+        printf "server {\n\
+                    server_name kibana;\n\
+                    \n\
+                    listen 6601 ssl;\n\
+                    # ssl on;\n\
+                    ssl_certificate /certs/nginx/nginx.crt;\n\
+                    ssl_certificate_key /certs/nginx/nginx.key;\n\
+                    \n\
+                    location / {\n\
+                            proxy_set_header Host \$$proxy_host;\n\
+                            proxy_set_header X-Real-IP \$$remote_addr;\n\
+                            proxy_set_header X-Forwarded-For \$$proxy_add_x_forwarded_for;\n\
+                            proxy_set_header Authorization \"Basic $${base64Pass}\"; # base64-encoded username:password to pass in header\n\
+                            proxy_pass https://kibana:5601;\n\
+                    }\n\
+                }\n\
+                \n\
+                \n\
+                server {\n\
+                    listen 6601 ssl;\n\
+                    server_name kibana;\n\
+                }\n" > /etc/nginx/conf.d/default.conf
+      '
+    volumes:
+      - nginxConfig:/etc/nginx/conf.d/
+    networks:
+      - elastic
+
+volumes:
+  nginxConfig:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge

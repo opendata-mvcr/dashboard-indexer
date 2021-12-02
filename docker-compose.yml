@@ -2,10 +2,9 @@ version: "3.9"
 services:
   es01:
     container_name: "es01"
-    image: "docker.elastic.co/elasticsearch/elasticsearch:${VERSION}"
+    image: "docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_STACK_VERSION}"
     ports:
-      - "9200:9200"                   # [docker host port]:[in container port]
-      - "9201:9201"                   # [docker host port]:[in container port]
+      - "${ELASTICSEARCH_PORT}:9200"    # [docker host port]:[in container port]
     environment:
       - node.name=es01
       - cluster.name=es-docker-cluster
@@ -24,9 +23,9 @@ services:
 
   kibana:
     container_name: "Kibana"
-    image: "docker.elastic.co/kibana/kibana:${VERSION}"
+    image: "docker.elastic.co/kibana/kibana:${ELASTIC_STACK_VERSION}"
     ports:
-      - "5601:5601"                   # [docker host port]:[in container port]
+      - "${KIBANA_PORT}:5601"           # [docker host port]:[in container port]
     environment:
       ELASTICSEARCH_URL: http://es01:9200
       ELASTICSEARCH_HOSTS: http://es01:9200
@@ -39,35 +38,34 @@ services:
     container_name: "Spring-indexer"
     environment:
 
-      elastic_host: es01              # the elastic host ip
+      elastic_host: es01                # the elastic host ip
 
-      elastic_port: '9200'            # the elastic host port
+      elastic_port: '9200'              # the elastic host port
 
-      kibana_host: kibana             # the kibana host ip
+      kibana_host: kibana               # the kibana host ip
 
-      kibana_port: '5601'             # the kibana host port
+      kibana_port: '5601'               # the kibana host port
 
       ssl_connection: 'false'           # to use SSL (HTTPS) or not
 
-      river_index: 'eeardf'           # the name of the index where the rivers are created
+      indexer_multithreading: 'true'    # if you want multithreading; each river will have a single thread
 
-      indexer_multithreading: 'true'  # if you want multithreading; each river will have a single thread
+      threads: $INDEXER_MAX_THREADS     # in case of multithreading, the max number of concurrent working threads
 
-      threads: 4                      # in case of multithreading, the max number of concurrent working threads
+      log_level: "info"                 # the log level (info or debug)
 
-      log_level: "info"               # the log level (info or debug)
-
-      cache_duration_in_seconds: 10   # number of second to cache dashboard data
+      cache_duration_in_seconds: 10     # number of second to cache dashboard data
 
     tty: true
 
     ports:
-      - "8080:8080"                   # [docker host port]:[in container port]
+      - "${INDEXER_PORT}:8080"          # [docker host port]:[in container port]
     volumes:
       - indexerDB:/DB
     networks:
       - elastic
     build: .
+    image: indexer-server
 
 volumes:
   esData:
