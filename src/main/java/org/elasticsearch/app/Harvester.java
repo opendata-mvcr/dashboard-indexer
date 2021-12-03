@@ -61,7 +61,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
@@ -1488,7 +1488,6 @@ public class Harvester implements Runnable, RunningHarvester {
         logger.info("Executing CONSTRUCT");
         Model model = qExec.execConstruct(ModelFactory.createDefaultModel());
         logger.info("Executing CONSTRUCT - done");
-        logger.info("Creating model");
         return model;
     }
 
@@ -1502,7 +1501,6 @@ public class Harvester implements Runnable, RunningHarvester {
         logger.info("Executing DESCRIBE");
         Model model = qExec.execDescribe(ModelFactory.createDefaultModel());
         logger.info("Executing DESCRIBE - done");
-        logger.info("Creating model");
         return model;
     }
 
@@ -1519,9 +1517,6 @@ public class Harvester implements Runnable, RunningHarvester {
         logger.info("Executing SELECT");
         ResultSet results = qExec.execSelect();
         logger.info("Executing SELECT - done");
-
-        setHarvestState(HarvestStates.CREATING_MODEL);
-        logger.info("Creating model");
         while (results.hasNext()) {
             if (stopped) return null;
             QuerySolution sol = results.next();
@@ -1599,7 +1594,8 @@ public class Harvester implements Runnable, RunningHarvester {
                     logger.error("Encountered an internal server error "
                             + "while harvesting. Retrying!");
                 } else {
-                    throw e;
+                    logger.error("Exception [{}] occurred while harvesting", e.getLocalizedMessage());
+                    return;
                 }
             }
         } while (retry && !stopped);
@@ -1610,45 +1606,66 @@ public class Harvester implements Runnable, RunningHarvester {
      * and harvests the results of the query.
      */
     private void harvestFromEndpoint() {
-
         logger.info("Harvest from endpoint ---------------------------------------------------------------");
-        Query query;
-        QueryExecution qExec;
-        Model model= ModelFactory.createDefaultModel();
+        Model model = ModelFactory.createDefaultModel();
+        ExecutorService threadpool = Executors.newCachedThreadPool();
+        List<Future<Model>> futureTasks = new ArrayList<>();
+        Integer queryNumber = 0;
 
         for (String rdfQuery : rdfQueries) {
             if (closed) return;
 
             logger.info(
-                    "Harvesting with query: [{}] on index [{}] and type [{}]",
-                    rdfQuery, indexName, typeName);
-
-            try {
-                logger.info("QUERY:");
-                logger.info(rdfQuery);
-                query = QueryFactory.create(rdfQuery);
-            } catch (QueryParseException qpe) {
-                logger.error(
-                        "Could not parse [{}]. Please provide a relevant query. {}",
-                        rdfQuery, qpe);
-                throw qpe;
-            }
-
-            qExec = QueryExecutionFactory.sparqlService(rdfEndpoint, query);
-            qExec.setTimeout(1200000); //20min
-            try {
-                //TODO: async
-                model.add(getModel(qExec));
-            } catch (Exception e) {
-                logger.error("Exception [{}] occurred while harvesting", e.getLocalizedMessage());
-                qExec.close();
-                throw e;
-            } finally {
-                qExec.close();
-            }
+                    "Harvesting {}. query on index [{}] and type [{}]",
+                    ++queryNumber, indexName, typeName);
+            String queryNumberString = queryNumber.toString();
+            futureTasks.add(threadpool.submit(() -> executeQueryAsync(rdfQuery, queryNumberString)));
 
         }
+        queryNumber = 0;
+        try {
+            for (Future<Model> task : futureTasks) {
+                queryNumber++;
+                model.add(task.get());
+                setHarvestState(HarvestStates.CREATING_MODEL);
+                logger.info("Creating model");
+            }
+        } catch (Exception e) {
+            logger.error("Harvesting failed on {}. query on index [{}] and type [{}]",
+                    queryNumber, indexName, typeName);
+            return;
+        }
         harvest(model);
+    }
+
+    private Model executeQueryAsync(String rdfQuery, String queryNumber) {
+        Thread.currentThread().setName(riverName + "-" + queryNumber);
+        Model model;
+        Query query;
+        QueryExecution qExec;
+        try {
+            logger.info("QUERY:");
+            logger.info(rdfQuery);
+            query = QueryFactory.create(rdfQuery);
+        } catch (QueryParseException qpe) {
+            logger.error(
+                    "Could not parse [{}]. Please provide a relevant query. {}",
+                    rdfQuery, qpe);
+            throw qpe;
+        }
+
+        qExec = QueryExecutionFactory.sparqlService(rdfEndpoint, query);
+        qExec.setTimeout(1200000); //20min
+        try {
+            model = getModel(qExec);
+        } catch (Exception e) {
+            logger.error("Exception [{}] occurred while harvesting", e.getLocalizedMessage());
+            qExec.close();
+            throw e;
+        } finally {
+            qExec.close();
+        }
+        return model;
     }
 
     /**
