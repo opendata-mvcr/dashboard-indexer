@@ -115,7 +115,7 @@ public class ConfigManager {
     }
 
     @Transactional
-    public void addUpdateRecordToRiver(String indexName, UpdateRecord updateRecord) {
+    public void addUpdateRecordToIndex(String indexName, UpdateRecord updateRecord) {
         River river = riverDAO.findById(indexName).orElse(null);
         if (Objects.isNull(river)) return;
         river.addUpdateRecord(updateRecord);

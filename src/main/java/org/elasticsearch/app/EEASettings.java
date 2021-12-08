@@ -17,6 +17,7 @@ public abstract class EEASettings {
     public final static String KIBANA_HOST = "localhost";
     public final static int KIBANA_PORT = 5601;
     public final static int CACHE_DURATION_IN_SECONDS = 10;
+    public final static int QUERY_TIMEOUT_IN_MILLISECONDS = 1200000;
     public final static String LOG_LEVEL = "info";
 
     public final static String DEFAULT_INDEX_NAME = "rdfdata";
