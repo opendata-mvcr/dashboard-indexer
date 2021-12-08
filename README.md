@@ -8,22 +8,22 @@ Copy production build of frontend application ([link](https://github.com/opendat
 
 ### 2. Create .env file
 
-Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing:
+Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (change variables in **double asterisks** `**var-name**`):
 
 	# Name of compose cluster of containers  
 	COMPOSE_PROJECT_NAME=**cluster-name**
 	
 	# Ports  
-	ELASTICSEARCH_PORT=**9201**
+	ELASTICSEARCH_PORT=**9200**
 	KIBANA_PORT=**5601**    
-	INDEXER_PORT=**8082**  
+	INDEXER_PORT=**8080**  
 	
 	# Aditional settings  
 	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
 	INDEXER_MAX_THREADS=4  
 	ELASTIC_STACK_VERSION=7.15.2
 
-Change variables in **double asterisks** `**var-name**`
+*Mentioned ports are widely used defaults*
 
 ### 3. Create docker containers
 
@@ -39,7 +39,7 @@ Copy production build of frontend application ([link](https://github.com/opendat
 
 ### 2. Create .env file
 
-Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing:
+Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**Only change variables in double asterisks `**var-name**`**):
 
 
 	# Name of compose cluster of containers  
@@ -52,13 +52,13 @@ Create .env file in root directory of the project (same directory as "*docker-co
 	PUBLIC_USERNAME=**public-user**
 	PUBLIC_PASSWORD=**public-pass**
 	  
-	# Ports  
-	ELASTICSEARCH_PORT=**9201**  
-	INDEXER_PORT=**8082**  
+	# Ports
+	ELASTICSEARCH_PORT=**9200**  
+	INDEXER_PORT=**8080**  
 	# Kibana port (for users with account)  
 	KIBANA_PORT=**5601**  
 	# Kibana port with auto-sign-in (for public display)  
-	PUBLIC_KIBANA_PORT=**6602**  
+	PUBLIC_KIBANA_PORT=**public-port**  
   
   
 	# Aditional settings  
@@ -67,7 +67,7 @@ Create .env file in root directory of the project (same directory as "*docker-co
 	ELASTIC_STACK_VERSION=7.15.2  
 	NGINX_VERSION=1.21.4
 
-**Only change variables in double asterisks `**var-name**` !!!**
+*Mentioned ports are widely used defaults*
 
 ### 3. Create docker containers
 
