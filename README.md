@@ -2,11 +2,7 @@
 
 ## HTTP
 
-### 1.  Add frontend
-
-Copy production build of frontend application ([link](https://github.com/opendata-mvcr/dashboard-indexer-frontend)) to *frontend/build*
-
-### 2. Create .env file
+### 1. Create .env file
 
 Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (change variables in **double asterisks** `**var-name**`):
 
@@ -23,9 +19,9 @@ Create .env file in root directory of the project (same directory as "*docker-co
 	INDEXER_MAX_THREADS=4  
 	ELASTIC_STACK_VERSION=7.15.2
 
-*Mentioned ports are widely used defaults*
+*Mentioned ports are widely used defaults.*
 
-### 3. Create docker containers
+### 2. Create docker containers
 
 Change settings in *docker-compose.yml* file.  Then create images and start containers with command:
 
@@ -33,11 +29,7 @@ Change settings in *docker-compose.yml* file.  Then create images and start cont
 
 ## HTTPS
 
-### 1.  Add frontend
-
-Copy production build of frontend application ([link](https://github.com/opendata-mvcr/dashboard-indexer-frontend)) to *frontend/build*
-
-### 2. Create .env file
+### 1. Create .env file
 
 Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**Only change variables in double asterisks `**var-name**`**):
 
@@ -67,9 +59,9 @@ Create .env file in root directory of the project (same directory as "*docker-co
 	ELASTIC_STACK_VERSION=7.15.2  
 	NGINX_VERSION=1.21.4
 
-*Mentioned ports are widely used defaults*
+*Mentioned ports are widely used defaults.*
 
-### 3. Create docker containers
+### 2. Create docker containers
 
 Optional ( You can change settings in *docker-compose-https.yml* file. )
 
@@ -82,7 +74,7 @@ Then create images and start containers with command:
 
 	docker-compose -f docker-compose-https.yml up -d
 
-### 4. Initialize passwords in ES
+### 3. Initialize passwords in ES
 
 Create initial passwords for Elasticsearch:
 
@@ -90,17 +82,17 @@ Create initial passwords for Elasticsearch:
 
 Save generated passwords (mainly `elastic` and `kibana_system`).
 
-### 5. Edit .env file
+### 4. Edit .env file
 
 Edit `.env` by changing `KIBANA_SYSTEM_PASS` to saved password `kibana_system`.
 
-### 6. Recreate docker containers
+### 5. Recreate docker containers
 
 Recreate kibana and indexer containers.
 
 	docker-compose -f docker-compose-https.yml up -d
 
-### 7. Setup Kibana
+### 6. Setup Kibana
 
 #### First login
 
