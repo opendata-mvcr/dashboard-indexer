@@ -25,7 +25,7 @@ Create .env file in root directory of the project (same directory as "*docker-co
 
 Change settings in *docker-compose.yml* file.  Then create images and start containers with command:
 
-	 docker-compose up -d
+	 docker-compose up -d --build
 
 ## HTTPS
 
@@ -72,7 +72,7 @@ Create Nginx config and certificates:
 
 Then create images and start containers with command:
 
-	docker-compose -f docker-compose-https.yml up -d
+	docker-compose -f docker-compose-https.yml up -d --build
 
 ### 3. Initialize passwords in ES
 
@@ -90,7 +90,7 @@ Edit `.env` by changing `KIBANA_SYSTEM_PASS` to saved password `kibana_system`.
 
 Recreate kibana and indexer containers.
 
-	docker-compose -f docker-compose-https.yml up -d
+	docker-compose -f docker-compose-https.yml up -d --build
 
 ### 6. Setup Kibana
 
