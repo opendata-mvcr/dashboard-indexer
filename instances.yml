@@ -5,7 +5,11 @@ instances:
       - localhost
     ip:
       - 127.0.0.1
-  - name: 'kibana01'
+  - name: kibana
     dns:
       - kibana
+      - localhost
+  - name: nginx
+    dns:
+      - nginx
       - localhost

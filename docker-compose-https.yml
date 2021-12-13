@@ -2,12 +2,11 @@ version: "3.9"
 services:
   es01:
     container_name: "es01"
-    image: "docker.elastic.co/elasticsearch/elasticsearch:${VERSION}"
+    image: "docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_STACK_VERSION}"
     ports:
-      - "9200:9200"                   # [docker host port]:[in container port]
-      - "9201:9201"                   # [docker host port]:[in container port]
+      - "${ELASTICSEARCH_PORT}:9200"    # [docker host port]:[in container port]
     environment:
-      - node.name=kifarunix-demo-es
+      - node.name=elasticsearch-01
       - cluster.name=es-docker-cluster
       - discovery.type=single-node
       - bootstrap.memory_lock=true
@@ -34,70 +33,87 @@ services:
       - elastic
     healthcheck:
       test: curl --cacert $CERTS_DIR/ca/ca.crt -s https://localhost:9200 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   kibana:
     container_name: "Kibana"
-    image: "docker.elastic.co/kibana/kibana:${VERSION}"
+    image: "docker.elastic.co/kibana/kibana:${ELASTIC_STACK_VERSION}"
     depends_on: { "es01": { "condition": "service_healthy" } }
     ports:
-      - "5601:5601"                   # [docker host port]:[in container port]
+      - "${KIBANA_PORT}:5601"           # [docker host port]:[in container port]
     environment:
       SERVERNAME: localhost
       ELASTICSEARCH_URL: https://es01:9200
       ELASTICSEARCH_HOSTS: https://es01:9200
       ELASTICSEARCH_USERNAME: kibana_system
-      ELASTICSEARCH_PASSWORD: yp4eInMXVI5ondvAMBcc
+      ELASTICSEARCH_PASSWORD: $KIBANA_SYSTEM_PASS
       ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: $CERTS_DIR/ca/ca.crt
       SERVER_SSL_ENABLED: "true"
-      SERVER_SSL_KEY: $CERTS_DIR/kibana01/kibana01.key
-      SERVER_SSL_CERTIFICATE: $CERTS_DIR/kibana01/kibana01.crt
+      SERVER_SSL_KEY: $CERTS_DIR/kibana/kibana.key
+      SERVER_SSL_CERTIFICATE: $CERTS_DIR/kibana/kibana.crt
     volumes:
       - certs:$CERTS_DIR
       - kibanaConfig:/usr/share/kibana/config
     networks:
       - elastic
+    healthcheck:
+      test: curl --cacert $CERTS_DIR/ca/ca.crt -s https://localhost:5601 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   indexer-server:
     container_name: "Spring-indexer"
     environment:
 
-      elastic_host: es01              # the elastic host ip
+      elastic_host: es01                # the elastic host ip
 
-      elastic_port: '9200'            # the elastic host port
+      elastic_port: '9200'              # the elastic host port
 
-      kibana_host: kibana             # the kibana host ip
+      kibana_host: kibana               # the kibana host ip
 
-      kibana_port: '5601'             # the kibana host port
+      kibana_port: '5601'               # the kibana host port
 
       ssl_connection: 'true'            # to use SSL (HTTPS) or not
 
-      elastic_user: indexer           # the elastic username for indexer
+      elastic_user: $INDEXER_USERNAME   # the elastic username for indexer
 
-      elastic_pass: indexer.1         # the elastic password for indexer
+      elastic_pass: $INDEXER_PASSWORD   # the elastic password for indexer
 
-      river_index: 'eeardf'           # the name of the index where the rivers are created
+      indexer_multithreading: 'true'    # if you want multithreading; each river will have a single thread
 
-      indexer_multithreading: 'true'  # if you want multithreading; each river will have a single thread
+      threads: $INDEXER_MAX_THREADS     # in case of multithreading, the max number of concurrent working threads
 
-      threads: 4                      # in case of multithreading, the max number of concurrent working threads
+      log_level: "info"                 # the log level (info or debug)
 
-      log_level: "info"               # the log level (info or debug)
-
-      cache_duration_in_seconds: 10   # number of second to cache dashboard data
+      cache_duration_in_seconds: 10     # number of second to cache dashboard data
 
     tty: true
 
     ports:
-      - "8080:8080"                   # [docker host port]:[in container port]
+      - "${INDEXER_PORT}:8080"          # [docker host port]:[in container port]
     volumes:
       - indexerDB:/DB
       - certs:/certs
     networks:
       - elastic
     build: .
+    image: indexer-server
+
+  nginx:
+    container_name: "Nginx"
+    image: "nginx:${NGINX_VERSION}"
+    depends_on: { "kibana": { "condition": "service_healthy" } }
+    ports:
+      - "${PUBLIC_KIBANA_PORT}:6601"    # [docker host port]:[in container port]
+    volumes:
+      - nginxConfig:/etc/nginx/conf.d/
+      - nginxLog:/var/log/nginx
+      - certs:/certs
+    networks:
+      - elastic
 
 volumes:
   esData:
@@ -109,6 +125,10 @@ volumes:
   certs:
     driver: local
   indexerDB:
+    driver: local
+  nginxConfig:
+    driver: local
+  nginxLog:
     driver: local
 
 networks:

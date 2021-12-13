@@ -1,8 +1,8 @@
-version: '2.2'
+version: '3.9'
 
 services:
   create_certs:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${VERSION}
+    image: "docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_STACK_VERSION}"
     container_name: create_certs
     command: >
       bash -c '

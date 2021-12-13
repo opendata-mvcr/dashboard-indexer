@@ -2,56 +2,150 @@
 
 ## HTTP
 
-### 1.  Building server application
+### 1. Create .env file
 
-Copy production build of frontend application ([link](https://github.com/opendata-mvcr/dashboard-indexer-frontend)) to *frontend/build*   
-Build server aplication:
+Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (change variables in **double asterisks** `**var-name**`):
 
-	 mvn clean install  
+	# Name of compose cluster of containers  
+	COMPOSE_PROJECT_NAME=**cluster-name**
+	
+	# Ports  
+	ELASTICSEARCH_PORT=**9200**
+	KIBANA_PORT=**5601**    
+	INDEXER_PORT=**8080**  
+	
+	# Aditional settings  
+	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
+	INDEXER_MAX_THREADS=4  
+	ELASTIC_STACK_VERSION=7.15.2
+
+*Mentioned ports are widely used defaults.*
 
 ### 2. Create docker containers
 
-Change settings in *docker-compose.yml* file. Then create images and start containers with command:
+Change settings in *docker-compose.yml* file.  Then create images and start containers with command:
 
-	 docker-compose up -d
+	 docker-compose up -d --build
 
 ## HTTPS
 
-### 1.  Building server application
+### 1. Create .env file
 
-Copy production build of frontend application ([link](https://gitlab.fel.cvut.cz/svagrmic/bp-application)) to *frontend/build*
+Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**Only change variables in double asterisks `**var-name**`**):
 
-Build server aplication:
 
-	mvn clean install
+	# Name of compose cluster of containers  
+	COMPOSE_PROJECT_NAME=**cluster-name**
+	KIBANA_SYSTEM_PASS=***kibana-system-pass*** 
+	# Kibana user credentials for indexer
+	INDEXER_USERNAME=***indexer-user***  
+	INDEXER_PASSWORD=***indexer-pass***  
+	# Kibana user credentials for public account (auto-sign-in user)  
+	PUBLIC_USERNAME=**public-user**
+	PUBLIC_PASSWORD=**public-pass**
+	  
+	# Ports
+	ELASTICSEARCH_PORT=**9200**  
+	INDEXER_PORT=**8080**  
+	# Kibana port (for users with account)  
+	KIBANA_PORT=**5601**  
+	# Kibana port with auto-sign-in (for public display)  
+	PUBLIC_KIBANA_PORT=**public-port**  
+  
+  
+	# Aditional settings  
+	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
+	INDEXER_MAX_THREADS=4  
+	ELASTIC_STACK_VERSION=7.15.2  
+	NGINX_VERSION=1.21.4
+
+*Mentioned ports are widely used defaults.*
 
 ### 2. Create docker containers
 
-Change settings in *docker-compose.yml* file. Then create images and start containers with command:
+Optional ( You can change settings in *docker-compose-https.yml* file. )
 
+Create Nginx config and certificates:
+
+	docker-compose -f create-nginx-conf.yml run --rm create_nginx_conf
 	docker-compose -f create-certs.yml run --rm create_certs
-	docker-compose -f docker-compose-https.yml up -d
 
-Create initial passwords for Elasticsearch
+Then create images and start containers with command:
+
+	docker-compose -f docker-compose-https.yml up -d --build
+
+### 3. Initialize passwords in ES
+
+Create initial passwords for Elasticsearch:
 
 	docker exec es01 /bin/bash -c "bin/elasticsearch-setup-passwords auto --batch --url https://localhost:9200"
 
-Save generated password `elastic` and `kibana_system`. Edit `docker-compose-https.yml` by changing field `ELASTICSEARCH_PASSWORD` to saved password `kibana_system`.
+Save generated passwords (mainly `elastic` and `kibana_system`).
 
-	...
-	ELASTICSEARCH_USERNAME: kibana_system  
-	ELASTICSEARCH_PASSWORD: **ChangeMe** 
-	ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: $CERTS_DIR/ca/ca.crt
-	...
+### 4. Edit .env file
 
-Recreate kibana containers.
+Edit `.env` by changing `KIBANA_SYSTEM_PASS` to saved password `kibana_system`.
 
-	docker-compose -f docker-compose-https.yml up -d
+### 5. Recreate docker containers
 
-Login to Kibana (https://localhost:5601) and create you own user with superuser role in `side menu > Stack Management > Users (under Security)`
+Recreate kibana and indexer containers.
+
+	docker-compose -f docker-compose-https.yml up -d --build
+
+### 6. Setup Kibana
+
+#### First login
+
+Login to Kibana (https://localhost:5601).
 
 - Username: elastic
 - Password: [saved_elastic_pass]
+
+Create you own *user* with `superuser` role in `side menu > Stack Management > Users (under Security)` and click `Create user`. Then relogin with your new superuser.
+
+#### Create user for indexer
+
+Create new role (in `side menu > Stack Management > Roles (under Security)` and click `Create role`):
+
+1. Set `Role name` to "*indexer*"
+2. ElasticSearch
+    - Cluster privliges - `manage`
+    - Index privliges
+        - Indeces - `*`
+        - Priviliges - `create`, `create_index`, ` manage`, `read`
+3. Kibana
+    - Click "*Add Kibana privileges*"
+        - Spaces - `* All Spaces`
+        - Privileges for all features - set to `Customize`
+        - Customize feature privileges
+            - click `Bulk actions > None`
+            - set `Analytics > Dashboard` to `Read`
+            - now all *feature privileges* should be `None` except for the `Analytics > Dashboard`
+        - Click "*Create global privileges*"
+4. Click "*Create role*"
+
+Create user with credentials from `.env` for indexer (`INDEXER_USERNAME` and `INDEXER_PASSWORD`) and assign role `indexer`.
+
+#### Create public user
+
+Create new role (in `side menu > Stack Management > Roles (under Security)` and click `Create role`):
+
+1. Set `Role name` to "*public*"
+2. ElasticSearch
+    - Index privliges
+        - Indeces - `*`
+        - Priviliges - `read`, `view_index_metadata`
+3. Kibana
+    - Click "*Add Kibana privileges*"
+        - Spaces - select what you want
+        - Privileges for all features - set to `Customize`
+        - Customize feature privileges
+            - click `Bulk actions > None`
+            - set `Analytics > Dashboard`, `Analytics > Discover`, `Analytics > Canvas`, `Analytics > Maps` and `Management > Saved Objects Management` to `Read`
+        - Click "*Create global privileges*"
+4. Click "*Create role*"
+
+Create user with credentials from `.env` for indexer (`PUBLIC_USERNAME` and `PUBLIC_PASSWORD`) and assign role `public`.
 
 -----
 
