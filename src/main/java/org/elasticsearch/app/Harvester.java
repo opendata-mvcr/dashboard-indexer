@@ -56,6 +56,9 @@ import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.springframework.beans.factory.annotation.Configurable;
+import org.springframework.context.annotation.Scope;
+import org.springframework.core.task.AsyncTaskExecutor;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -70,8 +73,10 @@ import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 /**
  * @author iulia
  */
+@Configurable
+@Scope("prototype")
 public class Harvester implements Runnable, RunningHarvester {
-    private static boolean DEBUG_TIME = false;
+    private boolean DEBUG_TIME = false;
 
     private boolean synced = false;
     private boolean failed = false;
@@ -158,6 +163,11 @@ public class Harvester implements Runnable, RunningHarvester {
     private String riverName;
     private String riverIndex;
 
+    private AsyncTaskExecutor harvestingTaskExecutor;
+
+    public Harvester(AsyncTaskExecutor harvestingTaskExecutor) {
+        this.harvestingTaskExecutor = harvestingTaskExecutor;
+    }
 
     private volatile Boolean closed = false;
 
@@ -761,7 +771,7 @@ public class Harvester implements Runnable, RunningHarvester {
         if (failed) {
             updateRecord.setFinishState(UpdateStates.FAILED);
             rollback();
-            logger.warn("Filed {} harvest", indexName);
+            logger.warn("Failed {} harvest", indexName);
         }
 
         if (indexer.isUsingAPI() && Objects.nonNull(indexer.configManager)) {
@@ -1648,7 +1658,6 @@ public class Harvester implements Runnable, RunningHarvester {
     }
 
     private List<Future<Model>> submitQueriesAsync() {
-        ExecutorService threadpool = Executors.newCachedThreadPool();
         List<Future<Model>> futureTasks = new ArrayList<>();
         Integer queryNumber = 0;
 
@@ -1660,7 +1669,7 @@ public class Harvester implements Runnable, RunningHarvester {
                     "Harvesting {}. query on index [{}] and type [{}]",
                     queryNumber, indexName, typeName);
             String queryNumberString = queryNumber.toString();
-            futureTasks.add(threadpool.submit(() -> executeQuery(rdfQuery, queryNumberString)));
+            futureTasks.add(harvestingTaskExecutor.submit(() -> executeQuery(rdfQuery, queryNumberString)));
 
         }
         return futureTasks;

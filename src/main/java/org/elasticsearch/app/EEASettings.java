@@ -19,6 +19,7 @@ public abstract class EEASettings {
     public final static int CACHE_DURATION_IN_SECONDS = 10;
     public final static int QUERY_TIMEOUT_IN_MILLISECONDS = 1200000;
     public final static String LOG_LEVEL = "info";
+    public final static int THREADS = 4;
 
     public final static String DEFAULT_INDEX_NAME = "rdfdata";
     public final static String DEFAULT_TYPE_NAME = "resource";

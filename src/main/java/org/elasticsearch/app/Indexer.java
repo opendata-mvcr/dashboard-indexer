@@ -33,6 +33,11 @@ import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.SearchHit;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.stereotype.Component;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
@@ -53,7 +58,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-
+@Component
+@Scope("singleton")
 public class Indexer {
 
     public final int cacheDurationInSeconds;
@@ -61,7 +67,7 @@ public class Indexer {
     private String riverIndex = "eeardf";
 
     private boolean MULTITHREADING_ACTIVE = true;
-    private int THREADS = 4;
+    private int THREADS;
     public String loglevel;
 
     public ConfigManager configManager;
@@ -81,7 +87,8 @@ public class Indexer {
     public final RestHighLevelClient clientES;
     public final RestHighLevelClient clientKibana;
 
-    private static ExecutorService executorService;
+    @Autowired
+    AsyncTaskExecutor harvestingTaskExecutor;
 
     public static void main(String[] args) {
 
@@ -100,81 +107,72 @@ public class Indexer {
         }
 
 
-        indexer.startIndexing();
-        indexer.awaitIndexingFinish();
+//        indexer.startIndexing();
+//        indexer.awaitIndexingFinish();
         indexer.close();
 
     }
 
     public void startIndexing() {
 
-        //TODO: loop for all rivers
-        if (MULTITHREADING_ACTIVE) {
-            Indexer.executorService = Executors.newFixedThreadPool(THREADS);
-        } else {
-            Indexer.executorService = Executors.newSingleThreadExecutor();
-        }
-
         for (River river : rivers) {
-            Harvester h = new Harvester();
+            Harvester h = new Harvester(harvestingTaskExecutor);
 
             h.client(clientES).riverName(river.getRiverName())
                     .riverIndex(riverIndex)
                     .indexer(this);
             this.addHarvesterSettings(h, river.getRiverSettings());
 
-            Indexer.executorService.submit(h);
+            harvestingTaskExecutor.execute(h);
             logger.info("Created thread for river: {}", river.getRiverName());
         }
-
-        Indexer.executorService.shutdown();
 
         logger.info("All tasks submitted.");
     }
 
     public void awaitIndexingFinish() {
-        try {
-            Indexer.executorService.awaitTermination(1, TimeUnit.DAYS);
-
-            try {
-                DeleteIndexRequest request = new DeleteIndexRequest(riverIndex);
-                clientES.indices().delete(request, RequestOptions.DEFAULT);
-                logger.info("Deleting river index!!!");
-
-            } catch (ElasticsearchException exception) {
-                if (exception.status() == RestStatus.NOT_FOUND) {
-                    logger.error("River index not found");
-                    logger.info("Tasks interrupted by missing river index.");
-                    this.close();
-                }
-            } catch (IOException e) {
-                logger.error("Unable to delete river index!!!");
-                this.close();
-            }
-
-        } catch (InterruptedException ignored) {
-            logger.info("Tasks interrupted.");
-        }
-        logger.info("All tasks completed.");
-
-        // Switching alias
-        if (rivers.size() > 0) {
-            River riv = rivers.get(0);
-
-            HashMap set = (HashMap) riv.getRiverSettings().get("syncReq");
-            HashMap ind = (HashMap) set.get("index");
-
-            if (ind != null) {
-                Boolean switchA = (Boolean) ind.get("switchAlias");
-
-                if (switchA != null && switchA) {
-                    RestClient lowclient = clientES.getLowLevelClient();
-
-                    switchAliases(lowclient, this);
-                }
-
-            }
-        }
+//        try {
+//            executorService.awaitTermination(1, TimeUnit.DAYS);
+//
+//            try {
+//                DeleteIndexRequest request = new DeleteIndexRequest(riverIndex);
+//                clientES.indices().delete(request, RequestOptions.DEFAULT);
+//                logger.info("Deleting river index!!!");
+//
+//            } catch (ElasticsearchException exception) {
+//                if (exception.status() == RestStatus.NOT_FOUND) {
+//                    logger.error("River index not found");
+//                    logger.info("Tasks interrupted by missing river index.");
+//                    this.close();
+//                }
+//            } catch (IOException e) {
+//                logger.error("Unable to delete river index!!!");
+//                this.close();
+//            }
+//
+//        } catch (InterruptedException ignored) {
+//            logger.info("Tasks interrupted.");
+//        }
+//        logger.info("All tasks completed.");
+//
+//        // Switching alias
+//        if (rivers.size() > 0) {
+//            River riv = rivers.get(0);
+//
+//            HashMap set = (HashMap) riv.getRiverSettings().get("syncReq");
+//            HashMap ind = (HashMap) set.get("index");
+//
+//            if (ind != null) {
+//                Boolean switchA = (Boolean) ind.get("switchAlias");
+//
+//                if (switchA != null && switchA) {
+//                    RestClient lowclient = clientES.getLowLevelClient();
+//
+//                    switchAliases(lowclient, this);
+//                }
+//
+//            }
+//        }
     }
 
     public void harvesterPoolAdd(Harvester harvester) {
@@ -319,7 +317,7 @@ public class Indexer {
         this.riverIndex = (env.get("river_index") != null) ? env.get("river_index") : this.riverIndex;
         this.MULTITHREADING_ACTIVE = (env.get("indexer_multithreading") != null) ?
                 Boolean.parseBoolean(env.get("indexer_multithreading")) : this.MULTITHREADING_ACTIVE;
-        this.THREADS = (env.get("threads") != null) ? Integer.parseInt(env.get("threads")) : this.THREADS;
+        this.THREADS = (env.get("threads") != null) ? Integer.parseInt(env.get("threads")) : EEASettings.THREADS;
         this.loglevel = (env.get("log_level") != null) ? env.get("log_level") : EEASettings.LOG_LEVEL;
         this.cacheDurationInSeconds = (env.get("cache_duration_in_seconds") != null) ? Integer.parseInt(env.get("cache_duration_in_seconds")) : EEASettings.CACHE_DURATION_IN_SECONDS;
 
