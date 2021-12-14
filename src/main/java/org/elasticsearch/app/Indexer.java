@@ -107,8 +107,8 @@ public class Indexer {
         }
 
 
-//        indexer.startIndexing();
-//        indexer.awaitIndexingFinish();
+        indexer.startIndexing();
+        indexer.awaitIndexingFinish();
         indexer.close();
 
     }
@@ -131,48 +131,48 @@ public class Indexer {
     }
 
     public void awaitIndexingFinish() {
-//        try {
-//            executorService.awaitTermination(1, TimeUnit.DAYS);
-//
-//            try {
-//                DeleteIndexRequest request = new DeleteIndexRequest(riverIndex);
-//                clientES.indices().delete(request, RequestOptions.DEFAULT);
-//                logger.info("Deleting river index!!!");
-//
-//            } catch (ElasticsearchException exception) {
-//                if (exception.status() == RestStatus.NOT_FOUND) {
-//                    logger.error("River index not found");
-//                    logger.info("Tasks interrupted by missing river index.");
-//                    this.close();
-//                }
-//            } catch (IOException e) {
-//                logger.error("Unable to delete river index!!!");
-//                this.close();
-//            }
-//
-//        } catch (InterruptedException ignored) {
-//            logger.info("Tasks interrupted.");
-//        }
-//        logger.info("All tasks completed.");
-//
-//        // Switching alias
-//        if (rivers.size() > 0) {
-//            River riv = rivers.get(0);
-//
-//            HashMap set = (HashMap) riv.getRiverSettings().get("syncReq");
-//            HashMap ind = (HashMap) set.get("index");
-//
-//            if (ind != null) {
-//                Boolean switchA = (Boolean) ind.get("switchAlias");
-//
-//                if (switchA != null && switchA) {
-//                    RestClient lowclient = clientES.getLowLevelClient();
-//
-//                    switchAliases(lowclient, this);
-//                }
-//
-//            }
-//        }
+        try {
+            harvestingTaskExecutor.wait();
+
+            try {
+                DeleteIndexRequest request = new DeleteIndexRequest(riverIndex);
+                clientES.indices().delete(request, RequestOptions.DEFAULT);
+                logger.info("Deleting river index!!!");
+
+            } catch (ElasticsearchException exception) {
+                if (exception.status() == RestStatus.NOT_FOUND) {
+                    logger.error("River index not found");
+                    logger.info("Tasks interrupted by missing river index.");
+                    this.close();
+                }
+            } catch (IOException e) {
+                logger.error("Unable to delete river index!!!");
+                this.close();
+            }
+
+        } catch (InterruptedException ignored) {
+            logger.info("Tasks interrupted.");
+        }
+        logger.info("All tasks completed.");
+
+        // Switching alias
+        if (rivers.size() > 0) {
+            River riv = rivers.get(0);
+
+            HashMap set = (HashMap) riv.getRiverSettings().get("syncReq");
+            HashMap ind = (HashMap) set.get("index");
+
+            if (ind != null) {
+                Boolean switchA = (Boolean) ind.get("switchAlias");
+
+                if (switchA != null && switchA) {
+                    RestClient lowclient = clientES.getLowLevelClient();
+
+                    switchAliases(lowclient, this);
+                }
+
+            }
+        }
     }
 
     public void harvesterPoolAdd(Harvester harvester) {
