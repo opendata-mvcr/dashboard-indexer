@@ -13,4 +13,4 @@ RUN mvn -f /pom.xml clean install
 FROM java:8
 EXPOSE 8080
 COPY --from=serverBuild /target/eea-rdf-river-indexer-*-altered.jar app.jar
-ENTRYPOINT ["java", "-jar", "-Xmx4096M", "-Xms2048M", "app.jar"]
+ENTRYPOINT ["java", "-jar", "-Xmx8192M", "-Xms2048M", "app.jar"]
