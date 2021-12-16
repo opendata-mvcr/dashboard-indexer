@@ -56,6 +56,10 @@ services:
 
       cache_duration_in_seconds: 10     # number of second to cache dashboard data
 
+      Xmx: '${JAVA_MAX_MEMORY}'         # maximum size of memory pool for java
+
+      Xms: '${JAVA_INIT_MEMORY}'        # initial size of memory pool for java
+
     tty: true
 
     ports:
