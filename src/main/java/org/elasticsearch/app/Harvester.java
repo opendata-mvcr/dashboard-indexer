@@ -761,7 +761,7 @@ public class Harvester implements Runnable, RunningHarvester {
         if (failed) {
             updateRecord.setFinishState(UpdateStates.FAILED);
             rollback();
-            logger.warn("Filed {} harvest", indexName);
+            logger.warn("Failed {} harvest", indexName);
         }
 
         if (indexer.isUsingAPI() && Objects.nonNull(indexer.configManager)) {
@@ -1648,7 +1648,7 @@ public class Harvester implements Runnable, RunningHarvester {
     }
 
     private List<Future<Model>> submitQueriesAsync() {
-        ExecutorService threadpool = Executors.newCachedThreadPool();
+        ExecutorService threadPool = Executors.newCachedThreadPool();
         List<Future<Model>> futureTasks = new ArrayList<>();
         Integer queryNumber = 0;
 
@@ -1660,9 +1660,10 @@ public class Harvester implements Runnable, RunningHarvester {
                     "Harvesting {}. query on index [{}] and type [{}]",
                     queryNumber, indexName, typeName);
             String queryNumberString = queryNumber.toString();
-            futureTasks.add(threadpool.submit(() -> executeQuery(rdfQuery, queryNumberString)));
+            futureTasks.add(threadPool.submit(() -> executeQuery(rdfQuery, queryNumberString)));
 
         }
+        threadPool.shutdown();
         return futureTasks;
     }
 
