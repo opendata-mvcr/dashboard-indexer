@@ -16,8 +16,10 @@ Create .env file in root directory of the project (same directory as "*docker-co
 	
 	# Aditional settings  
 	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
+	JAVA_MAX_MEMORY=8192M  
+	JAVA_INIT_MEMORY=2048M
 	INDEXER_MAX_THREADS=4  
-	ELASTIC_STACK_VERSION=7.15.2
+	ELASTIC_STACK_VERSION=7.16.0
 
 *Mentioned ports are widely used defaults.*
 
@@ -55,8 +57,10 @@ Create .env file in root directory of the project (same directory as "*docker-co
   
 	# Aditional settings  
 	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
+	JAVA_MAX_MEMORY=8192M  
+	JAVA_INIT_MEMORY=2048M
 	INDEXER_MAX_THREADS=4  
-	ELASTIC_STACK_VERSION=7.15.2  
+	ELASTIC_STACK_VERSION=7.16.0  
 	NGINX_VERSION=1.21.4
 
 *Mentioned ports are widely used defaults.*
