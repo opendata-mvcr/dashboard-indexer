@@ -82,7 +82,7 @@ public class Harvester implements Runnable, RunningHarvester {
         DESCRIBE
     }
 
-    private HarvestStates harvestState = HarvestStates.PREPARING;
+    private HarvestStates harvestState = HarvestStates.WAITING;
 
     private static final String indexPrefix = "@temp-";
 
@@ -646,9 +646,9 @@ public class Harvester implements Runnable, RunningHarvester {
             stop();
             failed = true;
             logger.error("Harvesting {} stopped", riverName);
+            indexer.runningHarvestersPoolRemove(this);
             return;
         }
-        indexer.harvesterPoolAdd(this);
 
         if (checkRiverNotExists()) {
             SearchRequest searchRequest = new SearchRequest(indexer.getRiverIndex());
@@ -771,7 +771,7 @@ public class Harvester implements Runnable, RunningHarvester {
             indexer.configManager.addUpdateRecordToIndex(indexName, updateRecord);
         }
 
-        indexer.harvesterPoolRemove(this);
+        indexer.runningHarvestersPoolRemove(this);
 
 
         logger.info("Thread closed");
@@ -1630,18 +1630,19 @@ public class Harvester implements Runnable, RunningHarvester {
 
     private Model awaitQueryResponses(List<Future<Model>> futureTasks) {
         Model model = ModelFactory.createDefaultModel();
-        int queryNumber = 0;
         try {
-            for (Future<Model> task : futureTasks) {
-                queryNumber++;
-                model.add(task.get());
+            while (!futureTasks.isEmpty()) {
+                for (Future<Model> task : futureTasks) {
+                    if (task.isDone()) {
+                        model.add(task.get());
+                        futureTasks.remove(task);
+                        break;
+                    }
+                }
             }
             logger.info("Model created");
         } catch (Exception e) {
             failed = true;
-            logger.error("Harvesting failed on {}. query on index [{}] and type [{}]",
-                    queryNumber, indexName, typeName);
-            logger.debug("Query:\n{}\nExeption:\n{}", rdfQueries.get(queryNumber - 1), e.getLocalizedMessage());
             return null;
         }
         return model;
@@ -1659,7 +1660,7 @@ public class Harvester implements Runnable, RunningHarvester {
             logger.info(
                     "Harvesting {}. query on index [{}] and type [{}]",
                     queryNumber, indexName, typeName);
-            String queryNumberString = queryNumber.toString();
+            Integer queryNumberString = queryNumber;
             futureTasks.add(threadPool.submit(() -> executeQuery(rdfQuery, queryNumberString)));
 
         }
@@ -1667,9 +1668,9 @@ public class Harvester implements Runnable, RunningHarvester {
         return futureTasks;
     }
 
-    private Model executeQuery(String rdfQuery, String queryNumber) {
+    private Model executeQuery(String rdfQuery, Integer queryNumber) {
         Thread.currentThread().setName(riverName + "-" + queryNumber);
-        Model model;
+        Model model = null;
         Query query;
         QueryExecution qExec;
         try {
@@ -1687,6 +1688,11 @@ public class Harvester implements Runnable, RunningHarvester {
         qExec.setTimeout(EEASettings.QUERY_TIMEOUT_IN_MILLISECONDS);
         try {
             model = getModel(qExec);
+        } catch (Exception e) {
+            logger.error("Harvesting failed on {}. query on index [{}] and type [{}]",
+                    queryNumber, indexName, typeName);
+            logger.error("Query:\n{}", rdfQueries.get(queryNumber - 1));
+            logger.error("Exception: {}", e.getLocalizedMessage());
         } finally {
             qExec.close();
         }
@@ -1973,7 +1979,7 @@ public class Harvester implements Runnable, RunningHarvester {
 
     @Override
     protected void finalize() throws Throwable {
-        indexer.harvesterPoolRemove(this);
+        indexer.runningHarvestersPoolRemove(this);
         super.finalize();
     }
 }

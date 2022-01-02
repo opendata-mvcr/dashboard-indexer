@@ -1,7 +1,6 @@
 package org.elasticsearch.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -9,35 +8,30 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-
-import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
-import org.apache.http.message.BasicHeader;
 import org.apache.http.nio.entity.NStringEntity;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.apache.http.util.EntityUtils;
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchStatusException;
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-
 import org.elasticsearch.action.search.*;
-import org.elasticsearch.app.api.server.services.ConfigManager;
+import org.elasticsearch.app.api.server.entities.River;
 import org.elasticsearch.app.api.server.scheduler.RunningHarvester;
+import org.elasticsearch.app.api.server.services.ConfigManager;
 import org.elasticsearch.app.logging.ESLogger;
 import org.elasticsearch.app.logging.Loggers;
-import org.elasticsearch.app.api.server.entities.River;
 import org.elasticsearch.client.*;
-
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
-import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.SearchHit;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Component;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,24 +43,20 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
-
+@Component
+@Scope("singleton")
 public class Indexer {
 
     public final int cacheDurationInSeconds;
 
     private String riverIndex = "eeardf";
 
-    private boolean MULTITHREADING_ACTIVE = true;
-    private int THREADS = 4;
     public String loglevel;
 
     public ConfigManager configManager;
 
-    private final Set<RunningHarvester> harvesterPool = new HashSet<>();
+    private final Set<RunningHarvester> runningHarvestersPool = new HashSet<>();
 
     private boolean usingAPI = true;
 
@@ -81,39 +71,9 @@ public class Indexer {
     public final RestHighLevelClient clientES;
     public final RestHighLevelClient clientKibana;
 
-    private static ExecutorService executorService;
-
-    public static void main(String[] args) {
-
-        logger.info("Starting application...");
-
-        Indexer indexer = new Indexer();
-        indexer.setUsingAPI(false);
-        indexer.getAllRivers();
-
-        logger.setLevel(indexer.loglevel);
-
-        if (indexer.rivers.size() == 0) {
-            logger.info("No rivers detected");
-            logger.info("No rivers added in " + indexer.riverIndex + " index.Stopping...");
-            indexer.close();
-        }
-
-
-        indexer.startIndexing();
-        indexer.awaitIndexingFinish();
-        indexer.close();
-
-    }
+    private ThreadPoolTaskExecutor harvestingTaskExecutor;
 
     public void startIndexing() {
-
-        //TODO: loop for all rivers
-        if (MULTITHREADING_ACTIVE) {
-            Indexer.executorService = Executors.newFixedThreadPool(THREADS);
-        } else {
-            Indexer.executorService = Executors.newSingleThreadExecutor();
-        }
 
         for (River river : rivers) {
             Harvester h = new Harvester();
@@ -123,70 +83,25 @@ public class Indexer {
                     .indexer(this);
             this.addHarvesterSettings(h, river.getRiverSettings());
 
-            Indexer.executorService.submit(h);
+            harvestingTaskExecutor.submit(h);
+            runningHarvestersPoolAdd(h);
+
             logger.info("Created thread for river: {}", river.getRiverName());
         }
-
-        Indexer.executorService.shutdown();
 
         logger.info("All tasks submitted.");
     }
 
-    public void awaitIndexingFinish() {
-        try {
-            Indexer.executorService.awaitTermination(1, TimeUnit.DAYS);
-
-            try {
-                DeleteIndexRequest request = new DeleteIndexRequest(riverIndex);
-                clientES.indices().delete(request, RequestOptions.DEFAULT);
-                logger.info("Deleting river index!!!");
-
-            } catch (ElasticsearchException exception) {
-                if (exception.status() == RestStatus.NOT_FOUND) {
-                    logger.error("River index not found");
-                    logger.info("Tasks interrupted by missing river index.");
-                    this.close();
-                }
-            } catch (IOException e) {
-                logger.error("Unable to delete river index!!!");
-                this.close();
-            }
-
-        } catch (InterruptedException ignored) {
-            logger.info("Tasks interrupted.");
-        }
-        logger.info("All tasks completed.");
-
-        // Switching alias
-        if (rivers.size() > 0) {
-            River riv = rivers.get(0);
-
-            HashMap set = (HashMap) riv.getRiverSettings().get("syncReq");
-            HashMap ind = (HashMap) set.get("index");
-
-            if (ind != null) {
-                Boolean switchA = (Boolean) ind.get("switchAlias");
-
-                if (switchA != null && switchA) {
-                    RestClient lowclient = clientES.getLowLevelClient();
-
-                    switchAliases(lowclient, this);
-                }
-
-            }
-        }
+    public void runningHarvestersPoolAdd(Harvester harvester) {
+        runningHarvestersPool.add(harvester);
     }
 
-    public void harvesterPoolAdd(Harvester harvester) {
-        harvesterPool.add(harvester);
+    public void runningHarvestersPoolRemove(Harvester harvester) {
+        runningHarvestersPool.remove(harvester);
     }
 
-    public void harvesterPoolRemove(Harvester harvester) {
-        harvesterPool.remove(harvester);
-    }
-
-    public Set<RunningHarvester> getHarvesterPool() {
-        return harvesterPool;
+    public Set<RunningHarvester> getRunningHarvestersPool() {
+        return runningHarvestersPool;
     }
 
     public boolean isUsingAPI() {
@@ -303,7 +218,9 @@ public class Indexer {
         }
     }
 
-    public Indexer() {
+    @Autowired
+    public Indexer(ThreadPoolTaskExecutor harvestingTaskExecutor) {
+        this.harvestingTaskExecutor = harvestingTaskExecutor;
         Map<String, String> env = System.getenv();
         this.envMap = env;
 
@@ -317,9 +234,6 @@ public class Indexer {
         String user = (env.get("elastic_user") != null) ? env.get("elastic_user") : EEASettings.USER;
         String pass = (env.get("elastic_pass") != null) ? env.get("elastic_pass") : EEASettings.PASS;
         this.riverIndex = (env.get("river_index") != null) ? env.get("river_index") : this.riverIndex;
-        this.MULTITHREADING_ACTIVE = (env.get("indexer_multithreading") != null) ?
-                Boolean.parseBoolean(env.get("indexer_multithreading")) : this.MULTITHREADING_ACTIVE;
-        this.THREADS = (env.get("threads") != null) ? Integer.parseInt(env.get("threads")) : this.THREADS;
         this.loglevel = (env.get("log_level") != null) ? env.get("log_level") : EEASettings.LOG_LEVEL;
         this.cacheDurationInSeconds = (env.get("cache_duration_in_seconds") != null) ? Integer.parseInt(env.get("cache_duration_in_seconds")) : EEASettings.CACHE_DURATION_IN_SECONDS;
 
@@ -349,8 +263,7 @@ public class Indexer {
         logger.debug("PORT: " + portES);
         logger.debug("SSL connection: " + ssl);
         logger.debug("RIVER INDEX: " + this.riverIndex);
-        logger.debug("MULTITHREADING_ACTIVE: " + this.MULTITHREADING_ACTIVE);
-        logger.debug("THREADS: " + this.THREADS);
+        logger.debug("Max concurrent harvests: " + harvestingTaskExecutor.getCorePoolSize());
         logger.info("LOG_LEVEL: " + this.loglevel);
         logger.debug("DOCUMENT BULK: ", Integer.toString(EEASettings.DEFAULT_BULK_REQ));
     }

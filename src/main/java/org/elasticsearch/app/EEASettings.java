@@ -17,14 +17,15 @@ public abstract class EEASettings {
     public final static String KIBANA_HOST = "localhost";
     public final static int KIBANA_PORT = 5601;
     public final static int CACHE_DURATION_IN_SECONDS = 10;
-    public final static int QUERY_TIMEOUT_IN_MILLISECONDS = 1200000;
+    public final static int QUERY_TIMEOUT_IN_MILLISECONDS = 20*60*1000;
+    public final static int MAX_CONCURRENT_HARVESTS = 6;
     public final static String LOG_LEVEL = "info";
 
     public final static String DEFAULT_INDEX_NAME = "rdfdata";
     public final static String DEFAULT_TYPE_NAME = "resource";
     public final static int DEFAULT_BULK_SIZE = 30;
     public final static int DEFAULT_BULK_REQ = 30;
-    public final static List<String> DEFAULT_QUERIES = new ArrayList<String>();
+    public final static List<String> DEFAULT_QUERIES = new ArrayList<>();
     public final static String DEFAULT_ENDPOINT = "http://semantic.eea.europa.eu/sparql";
     public final static String DEFAULT_CLUSTER_ID = "eea.europa.eu";
     public final static String DEFAULT_QUERYTYPE = "construct";

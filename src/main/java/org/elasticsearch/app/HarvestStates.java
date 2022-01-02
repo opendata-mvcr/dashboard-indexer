@@ -2,7 +2,7 @@ package org.elasticsearch.app;
 
 public enum HarvestStates {
 
-    PREPARING( "Preparing"),
+    WAITING( "Waiting for resources"),
     HARVESTING_ENDPOINT( "Harvesting endpoint"),
     CREATING_MODEL( "Creating model"),
     INDEXING( "Indexing"),
