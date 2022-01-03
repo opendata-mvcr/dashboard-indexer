@@ -1639,6 +1639,7 @@ public class Harvester implements Runnable, RunningHarvester {
                         break;
                     }
                 }
+                Thread.sleep(100);
             }
             logger.info("Model created");
         } catch (Exception e) {

@@ -71,7 +71,7 @@ public class Indexer {
     public final RestHighLevelClient clientES;
     public final RestHighLevelClient clientKibana;
 
-    private ThreadPoolTaskExecutor harvestingTaskExecutor;
+    private final ThreadPoolTaskExecutor harvestingTaskExecutor;
 
     public void startIndexing() {
 
