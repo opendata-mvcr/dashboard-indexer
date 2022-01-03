@@ -1,6 +1,6 @@
 # Instalation
 
-## HTTP
+## Without authentication
 
 ### 1. Create .env file
 
@@ -14,8 +14,7 @@ Create .env file in root directory of the project (same directory as "*docker-co
 	KIBANA_PORT=**5601**    
 	INDEXER_PORT=**8080**  
 	
-	# Aditional settings  
-	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
+	# Aditional settings   
 	JAVA_MAX_MEMORY=8192M  
 	JAVA_INIT_MEMORY=2048M
 	INDEXER_MAX_THREADS=4  
@@ -25,11 +24,13 @@ Create .env file in root directory of the project (same directory as "*docker-co
 
 ### 2. Create docker containers
 
-Change settings in *docker-compose.yml* file.  Then create images and start containers with command:
+Optional ( You can change settings in *docker-compose.yml* file. )
+
+Then create images and start containers with command:
 
 	 docker-compose up -d --build
 
-## HTTPS
+## With authentication
 
 ### 1. Create .env file
 
@@ -55,8 +56,7 @@ Create .env file in root directory of the project (same directory as "*docker-co
 	PUBLIC_KIBANA_PORT=**public-port**  
   
   
-	# Aditional settings  
-	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
+	# Aditional settings     
 	JAVA_MAX_MEMORY=8192M  
 	JAVA_INIT_MEMORY=2048M
 	INDEXER_MAX_THREADS=4  
@@ -67,22 +67,21 @@ Create .env file in root directory of the project (same directory as "*docker-co
 
 ### 2. Create docker containers
 
-Optional ( You can change settings in *docker-compose-https.yml* file. )
+Optional ( You can change settings in *docker-compose-auth.yml* file. )
 
-Create Nginx config and certificates:
+Create Nginx config:
 
 	docker-compose -f create-nginx-conf.yml run --rm create_nginx_conf
-	docker-compose -f create-certs.yml run --rm create_certs
 
 Then create images and start containers with command:
 
-	docker-compose -f docker-compose-https.yml up -d --build
+	docker-compose -f docker-compose-auth.yml up -d --build
 
 ### 3. Initialize passwords in ES
 
 Create initial passwords for Elasticsearch:
 
-	docker exec es01 /bin/bash -c "bin/elasticsearch-setup-passwords auto --batch --url https://localhost:9200"
+	docker exec es01 /bin/bash -c "bin/elasticsearch-setup-passwords auto --batch --url http://localhost:9200"
 
 Save generated passwords (mainly `elastic` and `kibana_system`).
 
@@ -94,13 +93,13 @@ Edit `.env` by changing `KIBANA_SYSTEM_PASS` to saved password `kibana_system`.
 
 Recreate kibana and indexer containers.
 
-	docker-compose -f docker-compose-https.yml up -d --build
+	docker-compose -f docker-compose-auth.yml up -d --build
 
 ### 6. Setup Kibana
 
 #### First login
 
-Login to Kibana (https://localhost:5601).
+Login to Kibana (default http://localhost:5601).
 
 - Username: elastic
 - Password: [saved_elastic_pass]
