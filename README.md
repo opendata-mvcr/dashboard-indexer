@@ -2,9 +2,9 @@
 
 ## Without authentication
 
-### 1. Create .env file
+### 1. Create `.env` file
 
-Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (change variables in **double asterisks** `**var-name**`):
+Create `.env` file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (change variables in **double asterisks** `**var-name**`):
 
 	# Name of compose cluster of containers  
 	COMPOSE_PROJECT_NAME=**cluster-name**
@@ -32,9 +32,9 @@ Then create images and start containers with command:
 
 ## With authentication
 
-### 1. Create .env file
+### 1. Create `.env` file
 
-Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**Only change variables in double asterisks `**var-name**`**):
+Create `.env` file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**Only change variables in double asterisks `**var-name**`**):
 
 
 	# Name of compose cluster of containers  
