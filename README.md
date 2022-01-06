@@ -4,7 +4,7 @@
 
 ### 1. Create `.env` file
 
-Create `.env` file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (change variables in **double asterisks** `**var-name**`):
+Create `.env` file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**change variables in double asterisks `**var-name**`**):
 
 	# Name of compose cluster of containers  
 	COMPOSE_PROJECT_NAME=**cluster-name**
@@ -34,7 +34,7 @@ Then create images and start containers with command:
 
 ### 1. Create `.env` file
 
-Create `.env` file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**Only change variables in double asterisks `**var-name**`**):
+Create `.env` file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**only change variables in double asterisks `**var-name**`**):
 
 
 	# Name of compose cluster of containers  
@@ -44,8 +44,8 @@ Create `.env` file in root directory of the project (same directory as "*docker-
 	INDEXER_USERNAME=***indexer-user***  
 	INDEXER_PASSWORD=***indexer-pass***  
 	# Kibana user credentials for public account (auto-sign-in user)  
-	PUBLIC_USERNAME=**public-user**
-	PUBLIC_PASSWORD=**public-pass**
+	PUBLIC_USERNAME=***public-user***
+	PUBLIC_PASSWORD=***public-pass***
 	  
 	# Ports
 	ELASTICSEARCH_PORT=**9200**  
@@ -87,7 +87,7 @@ Save generated passwords (mainly `elastic` and `kibana_system`).
 
 ### 4. Edit .env file
 
-Edit `.env` by changing `KIBANA_SYSTEM_PASS` to saved password `kibana_system`.
+Edit `.env` by changing variables in **triple asterisks**. `KIBANA_SYSTEM_PASS` to saved password `kibana_system` and come up with user credentials for "*Indexer*" and "*Public-user*". **(Special characters are not allowed in "*Public-user*" credentials.)**
 
 ### 5. Recreate docker containers
 
