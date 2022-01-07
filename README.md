@@ -150,6 +150,42 @@ Create new role (in `side menu > Stack Management > Roles (under Security)` and 
 
 Create user with credentials from `.env` for indexer (`PUBLIC_USERNAME` and `PUBLIC_PASSWORD`) and assign role `public`.
 
+### 7. (Optional) Custom deploy of Kibana for Public
+
+If you want to open your Kibana with auto-sign-in for public with URL path (no subdomain needed).
+
+Open file `docker-compose-auth.yml` and add these two lines that sets additional environment variables
+
+      SERVER_BASEPATH: **base-path**
+      SERVER_REWRITEBASEPATH: true
+
+in `services > kibana > environment` :
+
+    version: "3.9"
+    services:
+        es01:
+            ...
+        kibana:
+            ...
+            environment:
+                ...
+                **here** <<<<-------
+
+Change `**base-path**` for your desired base path (e.g. `/kibana`). This variable **must** start with `/`, but **can't** end with a `/`.
+
+Now your Kibana link will look something like http://localhost:5601/kibana/ and your auto-sing-in Kibana (just on a different port) as well.
+
+If you are using Nginx as your main proxy. Here is an example of location config:
+
+    location /kibana/ {
+        proxy_pass http://localhost:1234/kibana/;
+        proxy_pass_request_headers      on;
+        proxy_set_header   X-Real-IP        $remote_addr;
+        proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+    }
+
+Where the port is `**public-port**` from `.env` file.
+
 -----
 
 Nástroj pro indexování RDF dat pro Elasticsearch. Tento repozitář je udržován v rámci projektu OPZ č. [CZ.03.4.74/0.0/0.0/15_025/0013983](https://esf2014.esfcr.cz/PublicPortal/Views/Projekty/Public/ProjektDetailPublicPage.aspx?action=get&datovySkladId=F5E162B2-15EC-4BBE-9ABD-066388F3D412).  
