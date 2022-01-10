@@ -157,9 +157,9 @@ If you want to open your Kibana with auto-sign-in for public with URL path (no s
 Open file `docker-compose-auth.yml` and add these two lines that sets additional environment variables
 
       SERVER_BASEPATH: **base-path**
-      SERVER_REWRITEBASEPATH: true
+      SERVER_REWRITEBASEPATH: "true"
 
-in `services > kibana > environment` :
+to the `services > kibana > environment` section:
 
     version: "3.9"
     services:
