@@ -186,6 +186,46 @@ If you are using Nginx as your main proxy. Here is an example of location config
 
 Where the port is `**public-port**` from `.env` file.
 
+(*If you get stuck in login loop, you need to delete your browser cookies for this page.*)
+
+# Transfer data
+
+If you want to move your data and configs to another deployment.
+
+## Transfer dashboards
+
+### Export
+
+In Kibana go to ``side menu > Stack Management > Save Objects (under Kibana)`` and select dashboard you want. Click ``Export`` (select Include related objects) and ``Export``.
+
+### Import
+
+In Kibana go to ``side menu > Stack Management > Save Objects (under Kibana)``.  Click on ``Import``. Select file by clicking on Import rectangle or mouse over the file (*export.ndjson*) on Import rectangle. Select Import option and click ``Import``.
+
+
+## Transfer indexes
+
+### Prerequirements:
+
+- Install elasticdump tool (https://github.com/elasticsearch-dump/elasticsearch-dump).
+
+      npm install elasticdump -g
+
+- Created directory for export (e.g. ``backup``)
+
+### Export
+
+Execute command:
+
+    multielasticdump --match=regex --includeType=data,mapping --output=backup --input=http://username:password@localhost:9200
+
+### Inport
+
+Execute command:
+
+    multielasticdump --direction=load --includeType=data,mapping --input=backup --output=http://username:password@localhost:9200 
+
+
 -----
 
 Nástroj pro indexování RDF dat pro Elasticsearch. Tento repozitář je udržován v rámci projektu OPZ č. [CZ.03.4.74/0.0/0.0/15_025/0013983](https://esf2014.esfcr.cz/PublicPortal/Views/Projekty/Public/ProjektDetailPublicPage.aspx?action=get&datovySkladId=F5E162B2-15EC-4BBE-9ABD-066388F3D412).  
