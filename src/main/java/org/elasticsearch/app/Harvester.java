@@ -1588,8 +1588,6 @@ public class Harvester implements Runnable, RunningHarvester {
         do {
             retry = false;
             try {
-
-
                 BulkRequest bulkRequest = new BulkRequest();
                 if (model != null) {
                     addModelToES(model, bulkRequest, true);
@@ -1631,15 +1629,19 @@ public class Harvester implements Runnable, RunningHarvester {
     private Model awaitQueryResponses(List<Future<Model>> futureTasks) {
         Model model = ModelFactory.createDefaultModel();
         try {
+            boolean skipSleep;
             while (!futureTasks.isEmpty()) {
+                skipSleep = false;
                 for (Future<Model> task : futureTasks) {
                     if (task.isDone()) {
                         model.add(task.get());
                         futureTasks.remove(task);
+                        skipSleep = true;
                         break;
                     }
                 }
-                Thread.sleep(100);
+                if (!skipSleep)
+                    Thread.sleep(100);
             }
             logger.info("Model created");
         } catch (Exception e) {
