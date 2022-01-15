@@ -122,6 +122,18 @@ public class ConfigManager {
         riverDAO.save(river);
     }
 
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAllConfigs() {
+        return riverDAO.findAll().stream().map(River::toMap).collect(Collectors.toList());
+    }
+
+    @Transactional()
+    public void setAllConfigs(List<String> configs) {
+        for (String config : configs) {
+            save(config);
+        }
+    }
+
     public Map<String, String> getRunning() {
         Map<String, String> running = new HashMap<>();
         for (RunningHarvester harvester : indexer.getHarvesterPool()) {
@@ -218,7 +230,7 @@ public class ConfigManager {
                                 "Acknowledged:{}\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:{}"
                         , source, target, clone.isAcknowledged(), clone.isShardsAcknowledged());
                 throw new CouldNotCloneIndex(String.format("Cloning index %s to %s was not successful:\n\t\t\t\t\t\t\t\t\t\t\t\t\t" +
-                        "Acknowledged:%s\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:%s"
+                                "Acknowledged:%s\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:%s"
                         , source, target, clone.isAcknowledged(), clone.isShardsAcknowledged()));
             }
         } catch (ElasticsearchException | IOException e) {

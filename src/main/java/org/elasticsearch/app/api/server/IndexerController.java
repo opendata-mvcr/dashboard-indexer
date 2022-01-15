@@ -49,11 +49,24 @@ public class IndexerController {
         return configManager.getConfig(id);
     }
 
+    @GetMapping("/export/configs")
+    public List<Map<String, Object>> exportConfigs() {
+        return configManager.getAllConfigs();
+    }
+
     @PutMapping(path = "/configs", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.ACCEPTED)
     public String saveConfig(@RequestBody String jsonConfig) {
         River river = configManager.save(jsonConfig);
         return river.getRiverName();
+    }
+
+    @PutMapping(path = "/configAndIndex", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public String saveConfigAndStart(@RequestBody String jsonConfig) {
+        String id = saveConfig(jsonConfig);
+        startIndex(id);
+        return id;
     }
 
     @PostMapping("/configs/{id}/start")
@@ -66,12 +79,19 @@ public class IndexerController {
         configManager.startIndexing(river);
     }
 
-    @PutMapping(path = "/configAndIndex", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseStatus(HttpStatus.ACCEPTED)
-    public String saveConfigAndStart(@RequestBody String jsonConfig) {
-        String id = saveConfig(jsonConfig);
-        startIndex(id);
-        return id;
+    @PostMapping("/configs/{id}/stop")
+    public void stopIndex(@PathVariable String id) {
+        configManager.stopIndexing(id);
+    }
+
+    @PostMapping("/{source}/_clone/{target}")
+    public void cloneIndex(@PathVariable String source, @PathVariable String target) {
+        configManager.cloneIndexes(source, target);
+    }
+
+    @PostMapping("/import/configs")
+    public void importConfigs(@RequestBody List<String> jsonConfig) {
+        configManager.setAllConfigs(jsonConfig);
     }
 
     @DeleteMapping("/configs/{id}")
@@ -79,16 +99,4 @@ public class IndexerController {
         River river = configManager.getRiver(id);
         configManager.delete(river, deleteData);
     }
-
-    @PostMapping("/configs/{id}/stop")
-    public void stopIndex(@PathVariable String id) {
-        configManager.stopIndexing(id);
-    }
-
-    @PostMapping("/{source}/_clone/{target}")
-    public void cloneIndex(@PathVariable String source,@PathVariable String target){
-        configManager.cloneIndexes(source,target);
-    }
-
-
 }
