@@ -46,8 +46,6 @@ services:
 
       kibana_port: '5601'               # the kibana host port
 
-      ssl_connection: 'false'           # to use SSL (HTTPS) or not
-
       indexer_multithreading: 'true'    # if you want multithreading; each river will have a single thread
 
       threads: $INDEXER_MAX_THREADS     # in case of multithreading, the max number of concurrent working threads

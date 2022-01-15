@@ -1,10 +1,10 @@
 # Instalation
 
-## HTTP
+## Without authentication
 
-### 1. Create .env file
+### 1. Create `.env` file
 
-Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (change variables in **double asterisks** `**var-name**`):
+Create `.env` file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**change variables in double asterisks `**var-name**`**):
 
 	# Name of compose cluster of containers  
 	COMPOSE_PROJECT_NAME=**cluster-name**
@@ -14,8 +14,7 @@ Create .env file in root directory of the project (same directory as "*docker-co
 	KIBANA_PORT=**5601**    
 	INDEXER_PORT=**8080**  
 	
-	# Aditional settings  
-	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
+	# Aditional settings   
 	JAVA_MAX_MEMORY=8192M  
 	JAVA_INIT_MEMORY=2048M
 	INDEXER_MAX_THREADS=4  
@@ -25,15 +24,17 @@ Create .env file in root directory of the project (same directory as "*docker-co
 
 ### 2. Create docker containers
 
-Change settings in *docker-compose.yml* file.  Then create images and start containers with command:
+Optional ( You can change settings in *docker-compose.yml* file. )
+
+Then create images and start containers with command:
 
 	 docker-compose up -d --build
 
-## HTTPS
+## With authentication
 
-### 1. Create .env file
+### 1. Create `.env` file
 
-Create .env file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**Only change variables in double asterisks `**var-name**`**):
+Create `.env` file in root directory of the project (same directory as "*docker-compose.yml*"). Insert folowing (**only change variables in double asterisks `**var-name**`**):
 
 
 	# Name of compose cluster of containers  
@@ -43,8 +44,8 @@ Create .env file in root directory of the project (same directory as "*docker-co
 	INDEXER_USERNAME=***indexer-user***  
 	INDEXER_PASSWORD=***indexer-pass***  
 	# Kibana user credentials for public account (auto-sign-in user)  
-	PUBLIC_USERNAME=**public-user**
-	PUBLIC_PASSWORD=**public-pass**
+	PUBLIC_USERNAME=***public-user***
+	PUBLIC_PASSWORD=***public-pass***
 	  
 	# Ports
 	ELASTICSEARCH_PORT=**9200**  
@@ -55,8 +56,7 @@ Create .env file in root directory of the project (same directory as "*docker-co
 	PUBLIC_KIBANA_PORT=**public-port**  
   
   
-	# Aditional settings  
-	CERTS_DIR=/usr/share/elasticsearch/config/certificates  
+	# Aditional settings     
 	JAVA_MAX_MEMORY=8192M  
 	JAVA_INIT_MEMORY=2048M
 	INDEXER_MAX_THREADS=4  
@@ -67,40 +67,39 @@ Create .env file in root directory of the project (same directory as "*docker-co
 
 ### 2. Create docker containers
 
-Optional ( You can change settings in *docker-compose-https.yml* file. )
+Optional ( You can change settings in *docker-compose-auth.yml* file. )
 
-Create Nginx config and certificates:
+Create Nginx config:
 
 	docker-compose -f create-nginx-conf.yml run --rm create_nginx_conf
-	docker-compose -f create-certs.yml run --rm create_certs
 
 Then create images and start containers with command:
 
-	docker-compose -f docker-compose-https.yml up -d --build
+	docker-compose -f docker-compose-auth.yml up -d --build
 
 ### 3. Initialize passwords in ES
 
 Create initial passwords for Elasticsearch:
 
-	docker exec es01 /bin/bash -c "bin/elasticsearch-setup-passwords auto --batch --url https://localhost:9200"
+	docker exec es01 /bin/bash -c "bin/elasticsearch-setup-passwords auto --batch --url http://localhost:9200"
 
 Save generated passwords (mainly `elastic` and `kibana_system`).
 
 ### 4. Edit .env file
 
-Edit `.env` by changing `KIBANA_SYSTEM_PASS` to saved password `kibana_system`.
+Edit `.env` by changing variables in **triple asterisks**. `KIBANA_SYSTEM_PASS` to saved password `kibana_system` and come up with user credentials for "*Indexer*" and "*Public-user*". **(Special characters are not allowed in "*Public-user*" credentials.)**
 
 ### 5. Recreate docker containers
 
 Recreate kibana and indexer containers.
 
-	docker-compose -f docker-compose-https.yml up -d --build
+	docker-compose -f docker-compose-auth.yml up -d --build
 
 ### 6. Setup Kibana
 
 #### First login
 
-Login to Kibana (https://localhost:5601).
+Login to Kibana (default http://localhost:5601).
 
 - Username: elastic
 - Password: [saved_elastic_pass]
@@ -150,6 +149,42 @@ Create new role (in `side menu > Stack Management > Roles (under Security)` and 
 4. Click "*Create role*"
 
 Create user with credentials from `.env` for indexer (`PUBLIC_USERNAME` and `PUBLIC_PASSWORD`) and assign role `public`.
+
+### 7. (Optional) Custom deploy of Kibana for Public
+
+If you want to open your Kibana with auto-sign-in for public with URL path (no subdomain needed).
+
+Open file `docker-compose-auth.yml` and add these two lines that sets additional environment variables
+
+      SERVER_BASEPATH: **base-path**
+      SERVER_REWRITEBASEPATH: "true"
+
+to the `services > kibana > environment` section:
+
+    version: "3.9"
+    services:
+        es01:
+            ...
+        kibana:
+            ...
+            environment:
+                ...
+                **here** <<<<-------
+
+Change `**base-path**` for your desired base path (e.g. `/kibana`). This variable **must** start with `/`, but **can't** end with a `/`.
+
+Now your Kibana link will look something like http://localhost:5601/kibana/ and your auto-sing-in Kibana (just on a different port) as well.
+
+If you are using Nginx as your main proxy. Here is an example of location config:
+
+    location /kibana/ {
+        proxy_pass http://localhost:1234/kibana/;
+        proxy_pass_request_headers      on;
+        proxy_set_header   X-Real-IP        $remote_addr;
+        proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+    }
+
+Where the port is `**public-port**` from `.env` file.
 
 -----
 
