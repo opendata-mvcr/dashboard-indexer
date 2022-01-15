@@ -46,9 +46,7 @@ services:
 
       kibana_port: '5601'               # the kibana host port
 
-      indexer_multithreading: 'true'    # if you want multithreading; each river will have a single thread
-
-      threads: $INDEXER_MAX_THREADS     # in case of multithreading, the max number of concurrent working threads
+      max_concurrent_harvests: $INDEXER_MAX_CONCURRENT_HARVESTS     # the max number of concurrent working harvests
 
       log_level: "info"                 # the log level (info or debug)
 
