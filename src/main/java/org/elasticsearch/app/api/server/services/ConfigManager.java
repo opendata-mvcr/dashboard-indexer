@@ -128,10 +128,23 @@ public class ConfigManager {
     }
 
     @Transactional()
-    public void setAllConfigs(List<String> configs) {
+    public List<Integer> setAllConfigs(List<String> configs) {
+        int newConfigs = 0;
+        int updatedConfigs = 0;
         for (String config : configs) {
-            save(config);
+            River newRiver = createRiver(config);
+            River foundRiver = riverDAO.findById(newRiver.getRiverName()).orElse(null);
+            if (Objects.isNull(foundRiver)) {
+                foundRiver = newRiver;
+                newConfigs++;
+            } else {
+                foundRiver.update(newRiver);
+                updatedConfigs++;
+            }
+            addOrUpdateSchedule(foundRiver);
+            riverDAO.save(foundRiver);
         }
+        return Arrays.asList(newConfigs, updatedConfigs);
     }
 
     public Map<String, String> getRunning() {

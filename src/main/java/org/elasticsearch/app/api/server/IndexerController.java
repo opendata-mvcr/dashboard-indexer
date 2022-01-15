@@ -90,8 +90,8 @@ public class IndexerController {
     }
 
     @PostMapping("/import/configs")
-    public void importConfigs(@RequestBody List<String> jsonConfig) {
-        configManager.setAllConfigs(jsonConfig);
+    public List<Integer> importConfigs(@RequestBody List<String> jsonConfig) {
+        return configManager.setAllConfigs(jsonConfig);
     }
 
     @DeleteMapping("/configs/{id}")
