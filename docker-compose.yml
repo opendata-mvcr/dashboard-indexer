@@ -46,8 +46,6 @@ services:
 
       kibana_port: '5601'               # the kibana host port
 
-      ssl_connection: 'false'           # to use SSL (HTTPS) or not
-
       max_concurrent_harvests: $INDEXER_MAX_CONCURRENT_HARVESTS     # the max number of concurrent working harvests
 
       log_level: "info"                 # the log level (info or debug)
