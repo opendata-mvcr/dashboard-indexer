@@ -1,13 +1,13 @@
 # Content
 
- - [Installation](#installation)
-   - [Without authentication](#without-authentication)
-   - [With authentication](#with-authentication)
- - [Update](#update)
- - [Transfer data](#transfer-data)
-   - [Transfer dashboards](#transfer-dashboards)
-   - [Transfer indexer configs](#transfer-indexer-configs)
-   - [Transfer indexes](#transfer-indexes)
+- [Installation](#installation)
+    - [Without authentication](#without-authentication)
+    - [With authentication](#with-authentication)
+- [Update](#update)
+- [Transfer data](#transfer-data)
+    - [Transfer dashboards](#transfer-dashboards)
+    - [Transfer indexer configs](#transfer-indexer-configs)
+    - [Transfer indexes](#transfer-indexes)
 
 # Installation
 
@@ -26,7 +26,7 @@ change variables in double asterisks `**var-name**`**):
 	KIBANA_PORT=**5601**    
 	INDEXER_PORT=**8080**  
 	
-	# Aditional settings   
+	# Additional settings   
 	JAVA_MAX_MEMORY=8192M  
 	JAVA_INIT_MEMORY=2048M
 	INDEXER_MAX_THREADS=4  
@@ -68,7 +68,7 @@ change variables in double asterisks `**var-name**`**):
 	PUBLIC_KIBANA_PORT=**public-port**  
   
   
-	# Aditional settings     
+	# Additional settings     
 	JAVA_MAX_MEMORY=8192M  
 	JAVA_INIT_MEMORY=2048M
 	INDEXER_MAX_THREADS=4  
@@ -210,9 +210,13 @@ Where the port is `**public-port**` from `.env` file.
 # Update
 
 To update your deployment just download new version from git repository (check if template of `.env` for your deployment
-changed in [Installation](#installation)). Then execute command(s) from [Installation](#installation) step 2. of your
-deployment. (***Warning: this will create a new docker image for indexer and old one isn't going to be
-deleted (just renamed to `<none>`). Solution: [docker image prune](https://docs.docker.com/engine/reference/commandline/image_prune/#filtering).***)
+changed in [Installation](#installation)). Then execute:
+
+    docker build . --no-cache
+
+Then execute command(s) from [Installation](#installation) step 2. of your deployment. (***Warning: this will create a
+new docker image for indexer and old one isn't going to be deleted (just renamed to `<none>`).
+Solution: [docker image prune](https://docs.docker.com/engine/reference/commandline/image_prune/#filtering).***)
 
 If you only changed `.env`, `docker-compose.yml` or `docker-compose-auth.yml` just execute command(s)
 from [Installation](#installation) step 2. of your deployment.
