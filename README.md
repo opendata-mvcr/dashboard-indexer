@@ -29,7 +29,7 @@ change variables in double asterisks `**var-name**`**):
 	# Additional settings   
 	JAVA_MAX_MEMORY=8192M  
 	JAVA_INIT_MEMORY=2048M
-	INDEXER_MAX_THREADS=4  
+	INDEXER_MAX_CONCURRENT_HARVESTS=6  
 	ELASTIC_STACK_VERSION=7.16.0
 
 *Mentioned ports are widely used defaults.*
@@ -71,7 +71,7 @@ change variables in double asterisks `**var-name**`**):
 	# Additional settings     
 	JAVA_MAX_MEMORY=8192M  
 	JAVA_INIT_MEMORY=2048M
-	INDEXER_MAX_THREADS=4  
+	INDEXER_MAX_CONCURRENT_HARVESTS=6  
     KIBANA_BASE_PATH=/  
 	ELASTIC_STACK_VERSION=7.16.0  
 	NGINX_VERSION=1.21.4

@@ -159,7 +159,7 @@ public class ConfigManager {
 
     public Map<String, String> getRunning() {
         Map<String, String> running = new HashMap<>();
-        for (RunningHarvester harvester : indexer.getHarvesterPool()) {
+        for (RunningHarvester harvester : indexer.getRunningHarvestersPool()) {
             running.put(harvester.getIndexName(), harvester.getHarvestState().toString());
         }
         return running;
@@ -172,7 +172,7 @@ public class ConfigManager {
     }
 
     public void stopIndexing(String id) throws ConfigNotFoundException {
-        for (RunningHarvester harvester : indexer.getHarvesterPool()) {
+        for (RunningHarvester harvester : indexer.getRunningHarvestersPool()) {
             if (harvester.getIndexName().equals(id)) {
                 harvester.stop();
                 return;
@@ -182,7 +182,7 @@ public class ConfigManager {
     }
 
     public boolean isRunning(String riverName) {
-        return indexer.getHarvesterPool().stream().anyMatch(h -> h.getIndexName().equals(riverName));
+        return indexer.getRunningHarvestersPool().stream().anyMatch(h -> h.getIndexName().equals(riverName));
     }
 
     public Map<String, Object> getConfig(String id) throws ConfigNotFoundException {
