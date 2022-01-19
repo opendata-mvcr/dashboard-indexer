@@ -143,16 +143,17 @@ public class ConfigManager {
         int updatedConfigs = 0;
         for (String config : configs) {
             River newRiver = createRiver(config);
-            River foundRiver = riverDAO.getById(newRiver.getRiverName());
+            River resRiver;
             if (!riverDAO.existsById(newRiver.getRiverName())) {
-                foundRiver = newRiver;
+                resRiver = newRiver;
                 newConfigs++;
             } else {
-                foundRiver.update(newRiver);
+                resRiver = getRiver(newRiver.getRiverName());
+                resRiver.update(newRiver);
                 updatedConfigs++;
             }
-            addOrUpdateSchedule(foundRiver);
-            riverDAO.save(foundRiver);
+            addOrUpdateSchedule(resRiver);
+            riverDAO.save(resRiver);
         }
         return Arrays.asList(newConfigs, updatedConfigs);
     }

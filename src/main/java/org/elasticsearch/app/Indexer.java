@@ -238,7 +238,6 @@ public class Indexer {
         logger.debug("KIBANA BASE PATH: " + kibanaBasePath);
         logger.debug("RIVER INDEX: " + this.riverIndex);
         logger.debug("Max concurrent harvests: " + harvestingTaskExecutor.getCorePoolSize());
-        logger.debug("THREADS: " + this.THREADS);
         logger.info("LOG LEVEL: " + this.loglevel);
         logger.debug("DOCUMENT BULK: ", Integer.toString(EEASettings.DEFAULT_BULK_REQ));
     }
