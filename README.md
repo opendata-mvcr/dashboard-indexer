@@ -171,9 +171,11 @@ Create user with credentials from `.env` for indexer (`PUBLIC_USERNAME` and `PUB
 
 If you want to open your Kibana with auto-sign-in for public with URL path (no subdomain needed).
 
-Open file `docker-compose-auth.yml` and add these two lines that sets additional environment variables
+First open `.env` file and change variable `KIBANA_BASE_PATH` (under `# Additional settings`) to your desired base
+path (e.g. `/kibana`). This variable **must** start with `/`, but **can't** end with a `/`. Then open
+file `docker-compose-auth.yml` and add these two lines (that sets additional environment variables for Kibana container)
 
-      SERVER_BASEPATH: **base-path**
+      SERVER_BASEPATH: $KIBANA_BASE_PATH
       SERVER_REWRITEBASEPATH: "true"
 
 to the `services > kibana > environment` section:
@@ -187,9 +189,6 @@ to the `services > kibana > environment` section:
             environment:
                 ...
                 **here** <<<<-------
-
-Change `**base-path**` for your desired base path (e.g. `/kibana`). This variable **must** start with `/`, but **can't**
-end with a `/`.
 
 Now your Kibana link will look something like http://localhost:5601/kibana/ and your auto-sing-in Kibana (just on a
 different port) as well.
@@ -206,6 +205,9 @@ If you are using Nginx as your main proxy. Here is an example of location config
 Where the port is `**public-port**` from `.env` file.
 
 (*If you get stuck in login loop, you need to delete your browser cookies for this page.*)
+
+To revert this action, change variable `KIBANA_BASE_PATH` in `.env` back to `/` and remove the two added lines
+from `docker-compose-auth.yml`. Then execute [update](#update) sequence.
 
 # Update
 
