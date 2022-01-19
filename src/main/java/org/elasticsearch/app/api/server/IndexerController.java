@@ -72,7 +72,7 @@ public class IndexerController {
     @PostMapping("/configs/{id}/start")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void startIndex(@PathVariable String id) {
-        River river = configManager.getRiver(id);
+        River river = configManager.getRiverRef(id);
         if (configManager.isRunning(river.getRiverName())) {
             throw new AlreadyRunningException("Indexing of index '" + id + "', already running");
         }
@@ -96,7 +96,6 @@ public class IndexerController {
 
     @DeleteMapping("/configs/{id}")
     public void deleteIndex(@PathVariable String id, @RequestParam(required = false, defaultValue = "false") boolean deleteData) {
-        River river = configManager.getRiver(id);
-        configManager.delete(river, deleteData);
+        configManager.delete(id, deleteData);
     }
 }

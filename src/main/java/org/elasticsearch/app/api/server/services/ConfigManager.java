@@ -94,7 +94,10 @@ public class ConfigManager {
     }
 
     @Transactional
-    public void delete(River river, boolean deleteData) throws ConnectionLost {
+    public void delete(String id, boolean deleteData) throws ConnectionLost {
+        if (!riverDAO.existsById(id))
+            return;
+        River river = riverDAO.getById(id);
         if (deleteData) dashboardManager.deleteIndex(river.getRiverName());
         removeSchedule(river);
         riverDAO.delete(river);
@@ -109,9 +112,16 @@ public class ConfigManager {
 
     @Transactional(readOnly = true)
     public River getRiver(String id) throws ConfigNotFoundException {
-        River river = riverDAO.findById(id).orElse(null);
-        if (Objects.isNull(river)) throw new ConfigNotFoundException("Config of index '" + id + "', not found");
-        return river;
+        if (!riverDAO.existsById(id))
+            throw new ConfigNotFoundException("Config of index '" + id + "', not found");
+        return riverDAO.findById(id).orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public River getRiverRef(String id) throws ConfigNotFoundException {
+        if (!riverDAO.existsById(id))
+            throw new ConfigNotFoundException("Config of index '" + id + "', not found");
+        return riverDAO.getById(id);
     }
 
     @Transactional
@@ -133,8 +143,8 @@ public class ConfigManager {
         int updatedConfigs = 0;
         for (String config : configs) {
             River newRiver = createRiver(config);
-            River foundRiver = riverDAO.findById(newRiver.getRiverName()).orElse(null);
-            if (Objects.isNull(foundRiver)) {
+            River foundRiver = riverDAO.getById(newRiver.getRiverName());
+            if (!riverDAO.existsById(newRiver.getRiverName())) {
                 foundRiver = newRiver;
                 newConfigs++;
             } else {
