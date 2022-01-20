@@ -15,12 +15,14 @@ public abstract class EEASettings {
     public final static int ELASTICSEARCH_PORT = 9200;
     public final static String KIBANA_HOST = "localhost";
     public final static int KIBANA_PORT = 5601;
+    public final static String KIBANA_BASE_PATH = "/";
     public final static int CACHE_DURATION_IN_SECONDS = 10;
     public final static int QUERY_TIMEOUT_IN_MILLISECONDS = 20*60*1000;
     public final static int MAX_CONCURRENT_HARVESTS = 6;
     public final static String LOG_LEVEL = "info";
 
     public final static String DEFAULT_INDEX_NAME = "rdfdata";
+    public final static String DEFAULT_RIVER_INDEX = "eeardf";
     public final static String DEFAULT_TYPE_NAME = "resource";
     public final static int DEFAULT_BULK_SIZE = 30;
     public final static int DEFAULT_BULK_REQ = 30;

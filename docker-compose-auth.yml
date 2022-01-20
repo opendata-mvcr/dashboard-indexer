@@ -61,6 +61,8 @@ services:
 
       kibana_port: '5601'               # the kibana host port
 
+      kibana_base_path: $KIBANA_BASE_PATH  # base path in kibana
+
       elastic_user: $INDEXER_USERNAME   # the elastic username for indexer
 
       elastic_pass: $INDEXER_PASSWORD   # the elastic password for indexer

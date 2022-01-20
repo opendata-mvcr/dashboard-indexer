@@ -36,7 +36,7 @@ public class Indexer {
 
     public final int cacheDurationInSeconds;
 
-    private String riverIndex = "eeardf";
+    private String riverIndex;
 
     public String loglevel;
 
@@ -215,9 +215,10 @@ public class Indexer {
 
         String hostKibana = (env.get("kibana_host") != null) ? env.get("kibana_host") : EEASettings.KIBANA_HOST;
         int portKibana = (env.get("kibana_port") != null) ? Integer.parseInt(env.get("kibana_port")) : EEASettings.KIBANA_PORT;
+        String kibanaBasePath = (env.get("kibana_base_path") != null) ? env.get("kibana_base_path") : EEASettings.KIBANA_BASE_PATH;
         String user = (env.get("elastic_user") != null) ? env.get("elastic_user") : EEASettings.USER;
         String pass = (env.get("elastic_pass") != null) ? env.get("elastic_pass") : EEASettings.PASS;
-        this.riverIndex = (env.get("river_index") != null) ? env.get("river_index") : this.riverIndex;
+        this.riverIndex = (env.get("river_index") != null) ? env.get("river_index") : EEASettings.DEFAULT_RIVER_INDEX;
         this.loglevel = (env.get("log_level") != null) ? env.get("log_level") : EEASettings.LOG_LEVEL;
         this.cacheDurationInSeconds = (env.get("cache_duration_in_seconds") != null) ? Integer.parseInt(env.get("cache_duration_in_seconds")) : EEASettings.CACHE_DURATION_IN_SECONDS;
 
@@ -226,24 +227,32 @@ public class Indexer {
                 new UsernamePasswordCredentials(user, pass));
 
         clientES = getRestClient(hostES, portES);
-        clientKibana = getRestClient(hostKibana, portKibana);
+        clientKibana = getRestClient(hostKibana, portKibana, kibanaBasePath);
 
-        logger.debug("Username: " + user);
-        logger.debug("Password: " + pass);
-        logger.debug("HOST: " + hostES);
-        logger.debug("PORT: " + portES);
+        logger.debug("USERNAME: " + user);
+        logger.debug("PASSWORD: " + pass);
+        logger.debug("ES HOST: " + hostES);
+        logger.debug("ES PORT: " + portES);
+        logger.debug("KIBANA HOST: " + hostKibana);
+        logger.debug("KIBANA PORT: " + portKibana);
+        logger.debug("KIBANA BASE PATH: " + kibanaBasePath);
         logger.debug("RIVER INDEX: " + this.riverIndex);
         logger.debug("Max concurrent harvests: " + harvestingTaskExecutor.getCorePoolSize());
-        logger.info("LOG_LEVEL: " + this.loglevel);
+        logger.info("LOG LEVEL: " + this.loglevel);
         logger.debug("DOCUMENT BULK: ", Integer.toString(EEASettings.DEFAULT_BULK_REQ));
     }
 
     private RestHighLevelClient getRestClient(String host, int port) {
+        return getRestClient(host, port, "/");
+    }
+
+    private RestHighLevelClient getRestClient(String host, int port, String basePath) {
         String protocol = "http";
         return new RestHighLevelClient(
                 RestClient.builder(
                                 new HttpHost(host, port, protocol)
-                        ).setHttpClientConfigCallback(
+                        ).setPathPrefix(basePath)
+                        .setHttpClientConfigCallback(
                                 httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider)
                         )
                         .setFailureListener(new RestClient.FailureListener() {

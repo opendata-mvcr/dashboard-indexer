@@ -94,7 +94,10 @@ public class ConfigManager {
     }
 
     @Transactional
-    public void delete(River river, boolean deleteData) throws ConnectionLost {
+    public void delete(String id, boolean deleteData) throws ConnectionLost {
+        if (!riverDAO.existsById(id))
+            return;
+        River river = riverDAO.getById(id);
         if (deleteData) dashboardManager.deleteIndex(river.getRiverName());
         removeSchedule(river);
         riverDAO.delete(river);
@@ -109,9 +112,16 @@ public class ConfigManager {
 
     @Transactional(readOnly = true)
     public River getRiver(String id) throws ConfigNotFoundException {
-        River river = riverDAO.findById(id).orElse(null);
-        if (Objects.isNull(river)) throw new ConfigNotFoundException("Config of index '" + id + "', not found");
-        return river;
+        if (!riverDAO.existsById(id))
+            throw new ConfigNotFoundException("Config of index '" + id + "', not found");
+        return riverDAO.findById(id).orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public River getRiverRef(String id) throws ConfigNotFoundException {
+        if (!riverDAO.existsById(id))
+            throw new ConfigNotFoundException("Config of index '" + id + "', not found");
+        return riverDAO.getById(id);
     }
 
     @Transactional
@@ -120,6 +130,32 @@ public class ConfigManager {
         if (Objects.isNull(river)) return;
         river.addUpdateRecord(updateRecord);
         riverDAO.save(river);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAllConfigs() {
+        return riverDAO.findAll().stream().map(River::toMap).collect(Collectors.toList());
+    }
+
+    @Transactional()
+    public List<Integer> setAllConfigs(List<String> configs) {
+        int newConfigs = 0;
+        int updatedConfigs = 0;
+        for (String config : configs) {
+            River newRiver = createRiver(config);
+            River resRiver;
+            if (!riverDAO.existsById(newRiver.getRiverName())) {
+                resRiver = newRiver;
+                newConfigs++;
+            } else {
+                resRiver = getRiver(newRiver.getRiverName());
+                resRiver.update(newRiver);
+                updatedConfigs++;
+            }
+            addOrUpdateSchedule(resRiver);
+            riverDAO.save(resRiver);
+        }
+        return Arrays.asList(newConfigs, updatedConfigs);
     }
 
     public Map<String, String> getRunning() {
@@ -218,7 +254,7 @@ public class ConfigManager {
                                 "Acknowledged:{}\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:{}"
                         , source, target, clone.isAcknowledged(), clone.isShardsAcknowledged());
                 throw new CouldNotCloneIndex(String.format("Cloning index %s to %s was not successful:\n\t\t\t\t\t\t\t\t\t\t\t\t\t" +
-                        "Acknowledged:%s\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:%s"
+                                "Acknowledged:%s\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:%s"
                         , source, target, clone.isAcknowledged(), clone.isShardsAcknowledged()));
             }
         } catch (ElasticsearchException | IOException e) {

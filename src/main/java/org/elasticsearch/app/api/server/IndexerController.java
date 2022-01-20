@@ -49,21 +49,16 @@ public class IndexerController {
         return configManager.getConfig(id);
     }
 
+    @GetMapping("/export/configs")
+    public List<Map<String, Object>> exportConfigs() {
+        return configManager.getAllConfigs();
+    }
+
     @PutMapping(path = "/configs", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.ACCEPTED)
     public String saveConfig(@RequestBody String jsonConfig) {
         River river = configManager.save(jsonConfig);
         return river.getRiverName();
-    }
-
-    @PostMapping("/configs/{id}/start")
-    @ResponseStatus(HttpStatus.ACCEPTED)
-    public void startIndex(@PathVariable String id) {
-        River river = configManager.getRiver(id);
-        if (configManager.isRunning(river.getRiverName())) {
-            throw new AlreadyRunningException("Indexing of index '" + id + "', already running");
-        }
-        configManager.startIndexing(river);
     }
 
     @PutMapping(path = "/configAndIndex", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -74,10 +69,14 @@ public class IndexerController {
         return id;
     }
 
-    @DeleteMapping("/configs/{id}")
-    public void deleteIndex(@PathVariable String id, @RequestParam(required = false, defaultValue = "false") boolean deleteData) {
-        River river = configManager.getRiver(id);
-        configManager.delete(river, deleteData);
+    @PostMapping("/configs/{id}/start")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void startIndex(@PathVariable String id) {
+        River river = configManager.getRiverRef(id);
+        if (configManager.isRunning(river.getRiverName())) {
+            throw new AlreadyRunningException("Indexing of index '" + id + "', already running");
+        }
+        configManager.startIndexing(river);
     }
 
     @PostMapping("/configs/{id}/stop")
@@ -86,9 +85,17 @@ public class IndexerController {
     }
 
     @PostMapping("/{source}/_clone/{target}")
-    public void cloneIndex(@PathVariable String source,@PathVariable String target){
-        configManager.cloneIndexes(source,target);
+    public void cloneIndex(@PathVariable String source, @PathVariable String target) {
+        configManager.cloneIndexes(source, target);
     }
 
+    @PostMapping("/import/configs")
+    public List<Integer> importConfigs(@RequestBody List<String> jsonConfig) {
+        return configManager.setAllConfigs(jsonConfig);
+    }
 
+    @DeleteMapping("/configs/{id}")
+    public void deleteIndex(@PathVariable String id, @RequestParam(required = false, defaultValue = "false") boolean deleteData) {
+        configManager.delete(id, deleteData);
+    }
 }
