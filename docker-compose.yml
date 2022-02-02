@@ -20,6 +20,7 @@ services:
       - esConfig:/usr/share/elasticsearch/config/
     networks:
       - elastic
+    restart: always
 
   kibana:
     container_name: "Kibana"
@@ -33,6 +34,7 @@ services:
       - kibanaConfig:/usr/share/kibana/config
     networks:
       - elastic
+    restart: always
 
   indexer-server:
     container_name: "Spring-indexer"
@@ -66,6 +68,7 @@ services:
       - elastic
     build: .
     image: indexer-server
+    restart: always
 
 volumes:
   esData:
