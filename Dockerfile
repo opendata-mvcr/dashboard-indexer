@@ -10,7 +10,7 @@ COPY src /src
 COPY pom.xml /pom.xml
 RUN mvn -f /pom.xml clean install
 
-FROM java:8
+FROM openjdk:8u312-jre
 EXPOSE 8080
 COPY --from=server-build /target/eea-rdf-river-indexer-*-altered.jar app.jar
 ENTRYPOINT java -jar -Xmx$Xmx -Xms$Xms app.jar

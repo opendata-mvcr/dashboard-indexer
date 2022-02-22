@@ -21,6 +21,7 @@ services:
       - esConfig:/usr/share/elasticsearch/config
     networks:
       - elastic
+    restart: always
     healthcheck:
       test: curl -s http://localhost:9200 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
       interval: 15s
@@ -43,6 +44,7 @@ services:
       - kibanaConfig:/usr/share/kibana/config
     networks:
       - elastic
+    restart: always
     healthcheck:
       test: curl -s http://localhost:5601 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
       interval: 15s
@@ -87,6 +89,7 @@ services:
       - elastic
     build: .
     image: indexer-server
+    restart: always
 
   nginx:
     container_name: "Nginx"
@@ -99,6 +102,7 @@ services:
       - nginxLog:/var/log/nginx
     networks:
       - elastic
+    restart: always
 
 volumes:
   esData:

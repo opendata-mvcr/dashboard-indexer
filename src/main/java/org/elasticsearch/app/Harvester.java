@@ -1470,7 +1470,6 @@ public class Harvester implements Runnable, RunningHarvester {
              * Harvest from a SPARQL endpoint
              */
             if (!rdfQueries.isEmpty()) {
-                //TODO: not updated for ES6
                 harvestFromEndpoint();
                 if (stopped) return false;
             }
@@ -1578,11 +1577,11 @@ public class Harvester implements Runnable, RunningHarvester {
     }
 
     /**
-     * Add data to ES given a query execution service
+     * Add data to ES given a model from queries
      *
      * @param model executed queries transformed to model
      */
-    private void harvest(Model model) {
+    private void uploadDataToES(Model model) {
         boolean retry;
         int retryCount = 0;
         do {
@@ -1612,68 +1611,26 @@ public class Harvester implements Runnable, RunningHarvester {
      */
     private void harvestFromEndpoint() {
         logger.info("Harvest from endpoint ---------------------------------------------------------------");
-        Model model;
-        List<Future<Model>> futureTasks;
-
-        futureTasks = submitQueriesAsync();
-
-        if (stopped) return;
-
-        model = awaitQueryResponses(futureTasks);
-
-        if (failed || stopped) return;
-
-        harvest(model);
-    }
-
-    private Model awaitQueryResponses(List<Future<Model>> futureTasks) {
         Model model = ModelFactory.createDefaultModel();
+        int queryNumber = 0;
+
         try {
-            boolean skipSleep;
-            while (!futureTasks.isEmpty()) {
-                skipSleep = false;
-                for (Future<Model> task : futureTasks) {
-                    if (task.isDone()) {
-                        model.add(task.get());
-                        futureTasks.remove(task);
-                        skipSleep = true;
-                        break;
-                    }
-                }
-                if (!skipSleep)
-                    Thread.sleep(100);
+            for (String rdfQuery : rdfQueries) {
+                if (stopped) return;
+                queryNumber++;
+
+                QueryExecution qExec = getExecutableQuery(rdfQuery, queryNumber);
+
+                model.add(executeQuery(qExec, queryNumber));
+
             }
-            logger.info("Model created");
+            uploadDataToES(model);
         } catch (Exception e) {
             failed = true;
-            return null;
         }
-        return model;
     }
 
-    private List<Future<Model>> submitQueriesAsync() {
-        ExecutorService threadPool = Executors.newCachedThreadPool();
-        List<Future<Model>> futureTasks = new ArrayList<>();
-        Integer queryNumber = 0;
-
-        for (String rdfQuery : rdfQueries) {
-            if (stopped) return null;
-
-            queryNumber++;
-            logger.info(
-                    "Harvesting {}. query on index [{}] and type [{}]",
-                    queryNumber, indexName, typeName);
-            Integer queryNumberString = queryNumber;
-            futureTasks.add(threadPool.submit(() -> executeQuery(rdfQuery, queryNumberString)));
-
-        }
-        threadPool.shutdown();
-        return futureTasks;
-    }
-
-    private Model executeQuery(String rdfQuery, Integer queryNumber) {
-        Thread.currentThread().setName(riverName + "-" + queryNumber);
-        Model model = null;
+    private QueryExecution getExecutableQuery(String rdfQuery, int queryNumber) {
         Query query;
         QueryExecution qExec;
         try {
@@ -1682,13 +1639,21 @@ public class Harvester implements Runnable, RunningHarvester {
             query = QueryFactory.create(rdfQuery);
         } catch (QueryParseException qpe) {
             logger.error(
-                    "Could not parse [{}]. Please provide a relevant query. {}",
-                    rdfQuery, qpe);
+                    "Could not parse query {}. \n [{}]. Please provide a relevant query. {}",
+                    queryNumber, rdfQuery, qpe.getLocalizedMessage());
             throw qpe;
         }
 
         qExec = QueryExecutionFactory.sparqlService(rdfEndpoint, query);
         qExec.setTimeout(EEASettings.QUERY_TIMEOUT_IN_MILLISECONDS);
+        return qExec;
+    }
+
+    private Model executeQuery(QueryExecution qExec, Integer queryNumber) {
+        Model model;
+        logger.info(
+                "Harvesting {}/{} query on index [{}] and type [{}]",
+                queryNumber, rdfQueries.size(), indexName, typeName);
         try {
             model = getModel(qExec);
         } catch (Exception e) {
@@ -1696,6 +1661,7 @@ public class Harvester implements Runnable, RunningHarvester {
                     queryNumber, indexName, typeName);
             logger.error("Query:\n{}", rdfQueries.get(queryNumber - 1));
             logger.error("Exception: {}", e.getLocalizedMessage());
+            throw e;
         } finally {
             qExec.close();
         }
