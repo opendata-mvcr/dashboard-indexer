@@ -86,7 +86,7 @@ public class IndexerController {
 
     @PostMapping("/{source}/_clone/{target}")
     public void cloneIndex(@PathVariable String source, @PathVariable String target) {
-        configManager.cloneIndexes(source, target);
+        dashboardManager.cloneIndexes(source, target);
     }
 
     @PostMapping("/import/configs")

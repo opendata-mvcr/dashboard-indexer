@@ -38,7 +38,9 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.app.api.server.entities.UpdateRecord;
 import org.elasticsearch.app.api.server.entities.UpdateStates;
+import org.elasticsearch.app.api.server.exceptions.CouldNotCloneIndex;
 import org.elasticsearch.app.api.server.scheduler.RunningHarvester;
+import org.elasticsearch.app.api.server.services.DashboardManager;
 import org.elasticsearch.app.logging.ESLogger;
 
 import org.elasticsearch.app.logging.Loggers;
@@ -56,6 +58,9 @@ import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -75,6 +80,7 @@ public class Harvester implements Runnable, RunningHarvester {
 
     private boolean synced = false;
     private boolean failed = false;
+    private boolean incrementally = false;
 
     private enum QueryType {
         SELECT,
@@ -562,6 +568,11 @@ public class Harvester implements Runnable, RunningHarvester {
         return this;
     }
 
+    public Harvester setIncrementally(boolean incrementally) {
+        this.incrementally = incrementally;
+        return this;
+    }
+
     public Harvester rdfStartTime(String startTime) {
         this.lastupdateDate = startTime;
         return this;
@@ -677,23 +688,12 @@ public class Harvester implements Runnable, RunningHarvester {
 
                 if (lastupdateDate.isEmpty()) lastupdateDate = getLastUpdate();
 
-                //delete leftover temporary index if exists
-                try {
-                    AcknowledgedResponse delete = client.indices().delete(new DeleteIndexRequest(indexWithPrefix), RequestOptions.DEFAULT);
-                    if (delete.isAcknowledged()) logger.warn("Deleted {} before indexing", indexWithPrefix);
-                } catch (IOException e) {
-                    logger.error("Could not delete index {} before indexing", indexWithPrefix);
-                    stop();
-                    failed = true;
-                    break;
-                } catch (ElasticsearchException e) {
-                    if (e.status() != RestStatus.NOT_FOUND) {
-                        logger.error("Could not delete index {} before indexing", indexWithPrefix);
-                        stop();
-                        failed = true;
-                        break;
-                    }
+                deleteTempIndexIfExists();
+
+                if (incrementally) {
+                    copyCurrentIndexAsTempIndex();
                 }
+
                 setHarvestState(HarvestStates.HARVESTING_ENDPOINT);
                 if (indexAll && !synced)
                     success = runIndexAll();
@@ -775,10 +775,70 @@ public class Harvester implements Runnable, RunningHarvester {
 
 
         logger.info("Thread closed");
-		/* Any code after this step would not be executed as
-		   the master will interrupt the harvester thread after
-		   deleting the _river.
-		 */
+    }
+
+    //todo: implement with spring
+    private void copyCurrentIndexAsTempIndex() throws CouldNotCloneIndex {
+        String source = indexName;
+        String target = indexWithPrefix;
+        UpdateSettingsRequest settingsRequest = new UpdateSettingsRequest(source);
+        Settings settings = Settings.builder().put("index.blocks.write", true).build();
+        settingsRequest.settings(settings);
+        try {
+            indexer.clientES.indices().putSettings(settingsRequest, RequestOptions.DEFAULT);
+        } catch (ElasticsearchException | IOException e) {
+            logger.error("Could not set index.blocks.write=true on index " + source, e);
+            throw new CouldNotCloneIndex("Could not set index.blocks.write=true on index " + source);
+        }
+        ResizeRequest cloneRequest = new ResizeRequest(target, source);
+        cloneRequest.setResizeType(ResizeType.CLONE);
+        try {
+            ResizeResponse clone = indexer.clientES.indices().clone(cloneRequest, RequestOptions.DEFAULT);
+            if (!clone.isAcknowledged() || !clone.isShardsAcknowledged()) {
+                logger.error("Cloning index {} to {} was not successful:\n\t\t\t\t\t\t\t\t\t\t\t\t\t" +
+                                "Acknowledged:{}\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:{}"
+                        , source, target, clone.isAcknowledged(), clone.isShardsAcknowledged());
+                throw new CouldNotCloneIndex(String.format("Cloning index %s to %s was not successful:\n\t\t\t\t\t\t\t\t\t\t\t\t\t" +
+                                "Acknowledged:%s\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:%s"
+                        , source, target, clone.isAcknowledged(), clone.isShardsAcknowledged()));
+            }
+        } catch (ElasticsearchException | IOException e) {
+            logger.error("Could not clone index {} to {}", source, target, e);
+            throw new CouldNotCloneIndex(String.format("Could not clone index %s to %s", source, target));
+        }
+        setWriteBlockOnIndex(false, indexWithPrefix);
+    }
+
+    //TODO: change exception
+    private void setWriteBlockOnIndex(boolean block, String indexName) throws CouldNotCloneIndex {
+        UpdateSettingsRequest settingsRequest = new UpdateSettingsRequest(indexName);
+        Settings settings = Settings.builder().put("index.blocks.write", block).build();
+        settingsRequest.settings(settings);
+        try {
+            indexer.clientES.indices().putSettings(settingsRequest, RequestOptions.DEFAULT);
+        } catch (ElasticsearchException | IOException e) {
+            logger.error("Could not set index.blocks.write=true on index " + indexName, e);
+            throw new CouldNotCloneIndex("Could not set index.blocks.write=true on index " + indexName);
+        }
+    }
+
+    private void deleteTempIndexIfExists() throws IOException, ElasticsearchException {
+        try {
+            AcknowledgedResponse delete = client.indices().delete(new DeleteIndexRequest(indexWithPrefix), RequestOptions.DEFAULT);
+            if (delete.isAcknowledged()) logger.warn("Deleted {} before indexing", indexWithPrefix);
+        } catch (IOException e) {
+            logger.error("Could not delete index {} before indexing", indexWithPrefix);
+            stop();
+            failed = true;
+            throw e;
+        } catch (ElasticsearchException e) {
+            if (e.status() != RestStatus.NOT_FOUND) {
+                logger.error("Could not delete index {} before indexing", indexWithPrefix);
+                stop();
+                failed = true;
+                throw e;
+            }
+        }
     }
 
     private void renameIndex() {
