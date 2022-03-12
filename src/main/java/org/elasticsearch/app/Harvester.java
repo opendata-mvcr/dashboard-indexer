@@ -50,6 +50,7 @@ import org.elasticsearch.app.support.ESNormalizer;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 
+import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -779,17 +780,10 @@ public class Harvester implements Runnable, RunningHarvester {
 
     //todo: implement with spring
     private void copyCurrentIndexAsTempIndex() throws CouldNotCloneIndex {
+        if (!indexExists(indexName)) return;
         String source = indexName;
         String target = indexWithPrefix;
-        UpdateSettingsRequest settingsRequest = new UpdateSettingsRequest(source);
-        Settings settings = Settings.builder().put("index.blocks.write", true).build();
-        settingsRequest.settings(settings);
-        try {
-            indexer.clientES.indices().putSettings(settingsRequest, RequestOptions.DEFAULT);
-        } catch (ElasticsearchException | IOException e) {
-            logger.error("Could not set index.blocks.write=true on index " + source, e);
-            throw new CouldNotCloneIndex("Could not set index.blocks.write=true on index " + source);
-        }
+        setWriteBlockOnIndex(true, source);
         ResizeRequest cloneRequest = new ResizeRequest(target, source);
         cloneRequest.setResizeType(ResizeType.CLONE);
         try {
@@ -806,7 +800,20 @@ public class Harvester implements Runnable, RunningHarvester {
             logger.error("Could not clone index {} to {}", source, target, e);
             throw new CouldNotCloneIndex(String.format("Could not clone index %s to %s", source, target));
         }
-        setWriteBlockOnIndex(false, indexWithPrefix);
+        setWriteBlockOnIndex(false, target);
+    }
+
+    private boolean indexExists(String indexName) {
+        GetIndexRequest getIndexRequest = new GetIndexRequest(indexName);
+        boolean exists = false;
+        try {
+            exists = indexer.clientES.indices().exists(getIndexRequest, RequestOptions.DEFAULT);
+        } catch (ElasticsearchException | IOException e) {
+            logger.error("Something went wrong when searching for index: " + indexName);
+            logger.error(e.getLocalizedMessage());
+            throw new CouldNotCloneIndex("Could not set index.blocks.write=true on index " + indexName);
+        }
+        return exists;
     }
 
     //TODO: change exception
