@@ -15,6 +15,7 @@ import org.elasticsearch.action.search.*;
 import org.elasticsearch.app.api.server.entities.River;
 import org.elasticsearch.app.api.server.scheduler.RunningHarvester;
 import org.elasticsearch.app.api.server.services.ConfigManager;
+import org.elasticsearch.app.api.server.services.DashboardManager;
 import org.elasticsearch.app.logging.ESLogger;
 import org.elasticsearch.app.logging.Loggers;
 import org.elasticsearch.client.*;
@@ -56,6 +57,8 @@ public class Indexer {
 
     public final RestHighLevelClient clientES;
     public final RestHighLevelClient clientKibana;
+
+    public final DashboardManager dashboardManager;
 
     private final ThreadPoolTaskExecutor harvestingTaskExecutor;
 
@@ -208,8 +211,11 @@ public class Indexer {
     }
 
     @Autowired
-    public Indexer(ThreadPoolTaskExecutor harvestingTaskExecutor) {
+    public Indexer(ThreadPoolTaskExecutor harvestingTaskExecutor, DashboardManager dashboardManager) {
         this.harvestingTaskExecutor = harvestingTaskExecutor;
+        this.dashboardManager=dashboardManager;
+
+
         Map<String, String> env = System.getenv();
         this.envMap = env;
 

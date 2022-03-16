@@ -12,7 +12,6 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.riot.RiotException;
-
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.ActionListener;
@@ -25,7 +24,6 @@ import org.elasticsearch.action.admin.indices.shrink.ResizeType;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
-
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.get.GetRequest;
@@ -39,18 +37,14 @@ import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.app.api.server.entities.UpdateRecord;
 import org.elasticsearch.app.api.server.entities.UpdateStates;
 import org.elasticsearch.app.api.server.exceptions.CouldNotCloneIndex;
+import org.elasticsearch.app.api.server.exceptions.CouldNotSearchForIndex;
+import org.elasticsearch.app.api.server.exceptions.CouldNotSetSettingsOfIndex;
 import org.elasticsearch.app.api.server.scheduler.RunningHarvester;
-import org.elasticsearch.app.api.server.services.DashboardManager;
 import org.elasticsearch.app.logging.ESLogger;
-
 import org.elasticsearch.app.logging.Loggers;
-
-
 import org.elasticsearch.app.support.ESNormalizer;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
-
-import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -59,15 +53,11 @@ import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-
-import java.util.concurrent.*;
+import java.util.concurrent.TimeUnit;
 
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
@@ -778,55 +768,10 @@ public class Harvester implements Runnable, RunningHarvester {
         logger.info("Thread closed");
     }
 
-    //todo: implement with spring
-    private void copyCurrentIndexAsTempIndex() throws CouldNotCloneIndex {
-        if (!indexExists(indexName)) return;
-        String source = indexName;
-        String target = indexWithPrefix;
-        setWriteBlockOnIndex(true, source);
-        ResizeRequest cloneRequest = new ResizeRequest(target, source);
-        cloneRequest.setResizeType(ResizeType.CLONE);
-        try {
-            ResizeResponse clone = indexer.clientES.indices().clone(cloneRequest, RequestOptions.DEFAULT);
-            if (!clone.isAcknowledged() || !clone.isShardsAcknowledged()) {
-                logger.error("Cloning index {} to {} was not successful:\n\t\t\t\t\t\t\t\t\t\t\t\t\t" +
-                                "Acknowledged:{}\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:{}"
-                        , source, target, clone.isAcknowledged(), clone.isShardsAcknowledged());
-                throw new CouldNotCloneIndex(String.format("Cloning index %s to %s was not successful:\n\t\t\t\t\t\t\t\t\t\t\t\t\t" +
-                                "Acknowledged:%s\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:%s"
-                        , source, target, clone.isAcknowledged(), clone.isShardsAcknowledged()));
-            }
-        } catch (ElasticsearchException | IOException e) {
-            logger.error("Could not clone index {} to {}", source, target, e);
-            throw new CouldNotCloneIndex(String.format("Could not clone index %s to %s", source, target));
-        }
-        setWriteBlockOnIndex(false, target);
-    }
+    private void copyCurrentIndexAsTempIndex() throws CouldNotCloneIndex, CouldNotSearchForIndex, CouldNotSetSettingsOfIndex {
+        indexer.dashboardManager.cloneIndexes(indexName, indexWithPrefix);
 
-    private boolean indexExists(String indexName) {
-        GetIndexRequest getIndexRequest = new GetIndexRequest(indexName);
-        boolean exists = false;
-        try {
-            exists = indexer.clientES.indices().exists(getIndexRequest, RequestOptions.DEFAULT);
-        } catch (ElasticsearchException | IOException e) {
-            logger.error("Something went wrong when searching for index: " + indexName);
-            logger.error(e.getLocalizedMessage());
-            throw new CouldNotCloneIndex("Could not set index.blocks.write=true on index " + indexName);
-        }
-        return exists;
-    }
-
-    //TODO: change exception
-    private void setWriteBlockOnIndex(boolean block, String indexName) throws CouldNotCloneIndex {
-        UpdateSettingsRequest settingsRequest = new UpdateSettingsRequest(indexName);
-        Settings settings = Settings.builder().put("index.blocks.write", block).build();
-        settingsRequest.settings(settings);
-        try {
-            indexer.clientES.indices().putSettings(settingsRequest, RequestOptions.DEFAULT);
-        } catch (ElasticsearchException | IOException e) {
-            logger.error("Could not set index.blocks.write=true on index " + indexName, e);
-            throw new CouldNotCloneIndex("Could not set index.blocks.write=true on index " + indexName);
-        }
+        indexer.dashboardManager.setWriteBlockOnIndex(false, indexWithPrefix);
     }
 
     private void deleteTempIndexIfExists() throws IOException, ElasticsearchException {
