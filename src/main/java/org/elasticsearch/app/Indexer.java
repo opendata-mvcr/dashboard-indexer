@@ -42,6 +42,7 @@ public class Indexer {
     public String loglevel;
 
     public ConfigManager configManager;
+    public DashboardManager dashboardManager;
 
     private final Set<RunningHarvester> runningHarvestersPool = new HashSet<>();
 
@@ -58,7 +59,6 @@ public class Indexer {
     public final RestHighLevelClient clientES;
     public final RestHighLevelClient clientKibana;
 
-    public final DashboardManager dashboardManager;
 
     private final ThreadPoolTaskExecutor harvestingTaskExecutor;
 
@@ -211,10 +211,8 @@ public class Indexer {
     }
 
     @Autowired
-    public Indexer(ThreadPoolTaskExecutor harvestingTaskExecutor, DashboardManager dashboardManager) {
+    public Indexer(ThreadPoolTaskExecutor harvestingTaskExecutor) {
         this.harvestingTaskExecutor = harvestingTaskExecutor;
-        this.dashboardManager=dashboardManager;
-
 
         Map<String, String> env = System.getenv();
         this.envMap = env;

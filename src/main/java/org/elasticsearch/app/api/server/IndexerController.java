@@ -27,6 +27,7 @@ public class IndexerController {
         this.configManager = configManager;
         this.dashboardManager = dashboardManager;
         indexer.configManager = this.configManager;
+        indexer.dashboardManager = dashboardManager;
     }
 
     @GetMapping("/configs")
