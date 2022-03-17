@@ -33,7 +33,7 @@ public class River {
     private boolean automaticScheduling;
 
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default false")
     @Basic
     private boolean indexIncrementally;
 
@@ -53,6 +53,7 @@ public class River {
     public void setAutomaticScheduling(boolean automaticScheduling) {
         this.automaticScheduling = automaticScheduling;
     }
+
     public String getSchedule() {
         return schedule;
     }
@@ -105,7 +106,7 @@ public class River {
     public void update(River newRiver) {
         setRiverSettings(newRiver.getRiverSettings());
         automaticScheduling = newRiver.isAutomatic();
-        indexIncrementally= newRiver.isIndexIncrementally();
+        indexIncrementally = newRiver.isIndexIncrementally();
         setSchedule(newRiver.getSchedule());
     }
 
