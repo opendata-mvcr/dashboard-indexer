@@ -32,6 +32,11 @@ public class River {
     @Basic
     private boolean automaticScheduling;
 
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Basic
+    private boolean indexIncrementally;
+
     @OneToMany(cascade = CascadeType.ALL)
     private final List<UpdateRecord> updateHistory = new ArrayList<>();
 
@@ -48,6 +53,7 @@ public class River {
     public void setAutomaticScheduling(boolean automaticScheduling) {
         this.automaticScheduling = automaticScheduling;
     }
+
     public String getSchedule() {
         return schedule;
     }
@@ -91,6 +97,7 @@ public class River {
         Map<String, Object> scheduleMap = new HashMap<>();
         scheduleMap.put("schedule", schedule);
         scheduleMap.put("automatic", automaticScheduling);
+        res.put("incrementally", indexIncrementally);
         res.put("schedule", scheduleMap);
         res.put("config", getRiverSettings());
         return res;
@@ -99,6 +106,7 @@ public class River {
     public void update(River newRiver) {
         setRiverSettings(newRiver.getRiverSettings());
         automaticScheduling = newRiver.isAutomatic();
+        indexIncrementally = newRiver.isIndexIncrementally();
         setSchedule(newRiver.getSchedule());
     }
 
@@ -112,6 +120,14 @@ public class River {
 
     public void addUpdateRecord(UpdateRecord updateRecord) {
         updateHistory.add(updateRecord);
+    }
+
+    public boolean isIndexIncrementally() {
+        return indexIncrementally;
+    }
+
+    public void setIndexIncrementally(boolean indexIncrementally) {
+        this.indexIncrementally = indexIncrementally;
     }
 
     @Override
