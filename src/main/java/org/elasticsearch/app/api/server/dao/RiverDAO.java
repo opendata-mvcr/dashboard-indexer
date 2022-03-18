@@ -6,7 +6,12 @@ import org.springframework.stereotype.Repository;
 
 
 @Repository
-public interface RiverDAO extends JpaRepository<River,String> {
+public interface RiverDAO extends JpaRepository<River, String> {
 
+    River findByRiverName(String name);
+
+    River getByRiverName(String name);
+
+    boolean existsByRiverName(String name);
 
 }

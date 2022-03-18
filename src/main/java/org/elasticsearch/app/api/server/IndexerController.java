@@ -45,9 +45,9 @@ public class IndexerController {
         return configManager.getRunning();
     }
 
-    @GetMapping("/configs/{id}")
-    public Map<String, Object> getConfig(@PathVariable String id) {
-        return configManager.getConfig(id);
+    @GetMapping("/configs/{indexName}")
+    public Map<String, Object> getConfig(@PathVariable String indexName) {
+        return configManager.getConfig(indexName);
     }
 
     @GetMapping("/export/configs")
@@ -65,24 +65,31 @@ public class IndexerController {
     @PutMapping(path = "/configAndIndex", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.ACCEPTED)
     public String saveConfigAndStart(@RequestBody String jsonConfig) {
-        String id = saveConfig(jsonConfig);
-        startIndex(id);
-        return id;
+        String indexName = saveConfig(jsonConfig);
+        startIndex(indexName);
+        return indexName;
     }
 
-    @PostMapping("/configs/{id}/start")
+    @PutMapping(path = "/{oldIndexName}/_rename/{newIndexName}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public String renameConfigsIndex(@PathVariable String oldIndexName, @PathVariable String newIndexName) {
+        configManager.renameIndex(oldIndexName, newIndexName);
+        return newIndexName;
+    }
+
+    @PostMapping("/configs/{indexName}/start")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public void startIndex(@PathVariable String id) {
-        River river = configManager.getRiverRef(id);
+    public void startIndex(@PathVariable String indexName) {
+        River river = configManager.getRiverRef(indexName);
         if (configManager.isRunning(river.getRiverName())) {
-            throw new AlreadyRunningException("Indexing of index '" + id + "', already running");
+            throw new AlreadyRunningException("Indexing of index '" + indexName + "', already running");
         }
         configManager.startIndexing(river);
     }
 
-    @PostMapping("/configs/{id}/stop")
-    public void stopIndex(@PathVariable String id) {
-        configManager.stopIndexing(id);
+    @PostMapping("/configs/{indexName}/stop")
+    public void stopIndex(@PathVariable String indexName) {
+        configManager.stopIndexing(indexName);
     }
 
     @PostMapping("/{source}/_clone/{target}")
@@ -95,8 +102,8 @@ public class IndexerController {
         return configManager.setAllConfigs(jsonConfig);
     }
 
-    @DeleteMapping("/configs/{id}")
-    public void deleteIndex(@PathVariable String id, @RequestParam(required = false, defaultValue = "false") boolean deleteData) {
-        configManager.delete(id, deleteData);
+    @DeleteMapping("/configs/{indexName}")
+    public void deleteIndex(@PathVariable String indexName, @RequestParam(required = false, defaultValue = "false") boolean deleteData) {
+        configManager.delete(indexName, deleteData);
     }
 }

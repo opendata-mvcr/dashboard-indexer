@@ -1671,8 +1671,8 @@ public class Harvester implements Runnable, RunningHarvester {
         } catch (Exception e) {
             logger.error("Harvesting failed on {}. query on index [{}] and type [{}]",
                     queryNumber, indexName, typeName);
-            logger.error("Query:\n{}", rdfQueries.get(queryNumber - 1));
             logger.error("Exception: {}", e.getLocalizedMessage());
+            logger.error("Query:\n{}", rdfQueries.get(queryNumber - 1));
             throw e;
         } finally {
             qExec.close();

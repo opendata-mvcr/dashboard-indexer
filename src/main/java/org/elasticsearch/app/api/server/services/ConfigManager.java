@@ -11,10 +11,7 @@ import org.elasticsearch.app.Indexer;
 import org.elasticsearch.app.api.server.dao.RiverDAO;
 import org.elasticsearch.app.api.server.dto.ConfigInfoDTO;
 import org.elasticsearch.app.api.server.entities.UpdateRecord;
-import org.elasticsearch.app.api.server.exceptions.ConfigNotFoundException;
-import org.elasticsearch.app.api.server.exceptions.ConnectionLost;
-import org.elasticsearch.app.api.server.exceptions.CouldNotCloneIndex;
-import org.elasticsearch.app.api.server.exceptions.ParsingException;
+import org.elasticsearch.app.api.server.exceptions.*;
 import org.elasticsearch.app.api.server.scheduler.RunScheduledIndexing;
 import org.elasticsearch.app.api.server.scheduler.RunningHarvester;
 import org.elasticsearch.app.logging.ESLogger;
@@ -62,7 +59,7 @@ public class ConfigManager {
     @Transactional
     public River save(String jsonConfig) throws ParsingException {
         River newRiver = createRiver(jsonConfig);
-        River foundRiver = riverDAO.findById(newRiver.getRiverName()).orElse(null);
+        River foundRiver = riverDAO.findByRiverName(newRiver.getRiverName());
         if (Objects.isNull(foundRiver)) foundRiver = newRiver;
         else foundRiver.update(newRiver);
         addOrUpdateSchedule(foundRiver);
@@ -97,10 +94,10 @@ public class ConfigManager {
     }
 
     @Transactional
-    public void delete(String id, boolean deleteData) throws ConnectionLost {
-        if (!riverDAO.existsById(id))
+    public void delete(String name, boolean deleteData) throws ConnectionLost {
+        if (!riverDAO.existsByRiverName(name))
             return;
-        River river = riverDAO.getById(id);
+        River river = riverDAO.getByRiverName(name);
         if (deleteData) dashboardManager.deleteIndex(river.getRiverName());
         removeSchedule(river);
         riverDAO.delete(river);
@@ -114,22 +111,22 @@ public class ConfigManager {
     }
 
     @Transactional(readOnly = true)
-    public River getRiver(String id) throws ConfigNotFoundException {
-        if (!riverDAO.existsById(id))
-            throw new ConfigNotFoundException("Config of index '" + id + "', not found");
-        return riverDAO.findById(id).orElse(null);
+    public River getRiver(String name) throws ConfigNotFoundException {
+        if (!riverDAO.existsByRiverName(name))
+            throw new ConfigNotFoundException("Config of index '" + name + "', not found");
+        return riverDAO.findByRiverName(name);
     }
 
     @Transactional(readOnly = true)
-    public River getRiverRef(String id) throws ConfigNotFoundException {
-        if (!riverDAO.existsById(id))
-            throw new ConfigNotFoundException("Config of index '" + id + "', not found");
-        return riverDAO.getById(id);
+    public River getRiverRef(String name) throws ConfigNotFoundException {
+        if (!riverDAO.existsByRiverName(name))
+            throw new ConfigNotFoundException("Config of index '" + name + "', not found");
+        return riverDAO.getByRiverName(name);
     }
 
     @Transactional
     public void addUpdateRecordToIndex(String indexName, UpdateRecord updateRecord) {
-        River river = riverDAO.findById(indexName).orElse(null);
+        River river = riverDAO.findByRiverName(indexName);
         if (Objects.isNull(river)) return;
         river.addUpdateRecord(updateRecord);
         riverDAO.save(river);
@@ -140,14 +137,14 @@ public class ConfigManager {
         return riverDAO.findAll().stream().map(River::toMap).collect(Collectors.toList());
     }
 
-    @Transactional()
+    @Transactional
     public List<Integer> setAllConfigs(List<String> configs) throws ParsingException {
         int newConfigs = 0;
         int updatedConfigs = 0;
         for (String config : configs) {
             River newRiver = createRiver(config);
             River resRiver;
-            if (!riverDAO.existsById(newRiver.getRiverName())) {
+            if (!riverDAO.existsByRiverName(newRiver.getRiverName())) {
                 resRiver = newRiver;
                 newConfigs++;
             } else {
@@ -159,6 +156,20 @@ public class ConfigManager {
             riverDAO.save(resRiver);
         }
         return Arrays.asList(newConfigs, updatedConfigs);
+    }
+
+    @Transactional
+    public void renameIndex(String oldIndexName, String newIndexName) throws ConfigNotFoundException, CouldNotCloneIndex, CouldNotSearchForIndex, CouldNotSetSettingsOfIndex, ConnectionLost {
+        River riverRef = getRiverRef(oldIndexName);
+        if (riverDAO.existsByRiverName(newIndexName))
+            throw new CouldNotRenameConfigsIndex("The new index name [{}] is already used in different config.");
+        if (dashboardManager.indexExists(newIndexName))
+            throw new CouldNotRenameConfigsIndex("The new index name [{}] already exists in kibana.");
+
+        dashboardManager.cloneIndexes(oldIndexName, newIndexName);
+        riverRef.setRiverName(newIndexName);
+        riverDAO.save(riverRef);
+        dashboardManager.deleteIndex(oldIndexName);
     }
 
     public Map<String, String> getRunning() {
@@ -175,22 +186,22 @@ public class ConfigManager {
         indexer.startIndexing();
     }
 
-    public void stopIndexing(String id) throws ConfigNotFoundException {
+    public void stopIndexing(String name) throws ConfigNotFoundException {
         for (RunningHarvester harvester : indexer.getRunningHarvestersPool()) {
-            if (harvester.getIndexName().equals(id)) {
+            if (harvester.getIndexName().equals(name)) {
                 harvester.stop();
                 return;
             }
         }
-        throw new ConfigNotFoundException("Indexing of index '" + id + "' is not running");
+        throw new ConfigNotFoundException("Indexing of index '" + name + "' is not running");
     }
 
     public boolean isRunning(String riverName) {
         return indexer.getRunningHarvestersPool().stream().anyMatch(h -> h.getIndexName().equals(riverName));
     }
 
-    public Map<String, Object> getConfig(String id) throws ConfigNotFoundException {
-        return getRiver(id).toMap();
+    public Map<String, Object> getConfig(String name) throws ConfigNotFoundException {
+        return getRiver(name).toMap();
     }
 
     private void createSchedule() {
