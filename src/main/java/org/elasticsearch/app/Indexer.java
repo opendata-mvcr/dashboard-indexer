@@ -15,6 +15,7 @@ import org.elasticsearch.action.search.*;
 import org.elasticsearch.app.api.server.entities.River;
 import org.elasticsearch.app.api.server.scheduler.RunningHarvester;
 import org.elasticsearch.app.api.server.services.ConfigManager;
+import org.elasticsearch.app.api.server.services.DashboardManager;
 import org.elasticsearch.app.logging.ESLogger;
 import org.elasticsearch.app.logging.Loggers;
 import org.elasticsearch.client.*;
@@ -41,6 +42,7 @@ public class Indexer {
     public String loglevel;
 
     public ConfigManager configManager;
+    public DashboardManager dashboardManager;
 
     private final Set<RunningHarvester> runningHarvestersPool = new HashSet<>();
 
@@ -57,6 +59,7 @@ public class Indexer {
     public final RestHighLevelClient clientES;
     public final RestHighLevelClient clientKibana;
 
+
     private final ThreadPoolTaskExecutor harvestingTaskExecutor;
 
     public void startIndexing() {
@@ -64,9 +67,12 @@ public class Indexer {
         for (River river : rivers) {
             Harvester h = new Harvester();
 
-            h.client(clientES).riverName(river.getRiverName())
+            h.client(clientES)
+                    .riverName(river.getRiverName())
                     .riverIndex(riverIndex)
+                    .setIncrementally(river.isIndexIncrementally())
                     .indexer(this);
+
             this.addHarvesterSettings(h, river.getRiverSettings());
 
             harvestingTaskExecutor.submit(h);
@@ -207,6 +213,7 @@ public class Indexer {
     @Autowired
     public Indexer(ThreadPoolTaskExecutor harvestingTaskExecutor) {
         this.harvestingTaskExecutor = harvestingTaskExecutor;
+
         Map<String, String> env = System.getenv();
         this.envMap = env;
 

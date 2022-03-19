@@ -5,15 +5,24 @@ import org.apache.jena.atlas.json.JsonObject;
 import org.apache.jena.atlas.json.JsonString;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
+import org.elasticsearch.action.admin.indices.shrink.ResizeRequest;
+import org.elasticsearch.action.admin.indices.shrink.ResizeResponse;
+import org.elasticsearch.action.admin.indices.shrink.ResizeType;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.app.Indexer;
 import org.elasticsearch.app.api.server.exceptions.ConnectionLost;
+import org.elasticsearch.app.api.server.exceptions.CouldNotCloneIndex;
+import org.elasticsearch.app.api.server.exceptions.CouldNotSearchForIndex;
+import org.elasticsearch.app.api.server.exceptions.CouldNotSetSettingsOfIndex;
 import org.elasticsearch.app.logging.ESLogger;
 import org.elasticsearch.app.logging.Loggers;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.Response;
+import org.elasticsearch.client.indices.GetIndexRequest;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -112,5 +121,55 @@ public class DashboardManager {
             Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();
             logger.debug("Cache '{}' cleared", cacheName);
         }, cacheDurationInSeconds, TimeUnit.SECONDS);
+    }
+
+    public void cloneIndexes(String source, String target) throws CouldNotCloneIndex, CouldNotSearchForIndex, CouldNotSetSettingsOfIndex {
+        if (!indexExists(source))
+            throw new CouldNotCloneIndex(String.format("Source index [{}] not found.", source, target, source));
+        setWriteBlockOnIndex(true, source);
+        ResizeRequest cloneRequest = new ResizeRequest(target, source);
+        cloneRequest.setResizeType(ResizeType.CLONE);
+        try {
+            ResizeResponse clone = indexer.clientES.indices().clone(cloneRequest, RequestOptions.DEFAULT);
+            if (!clone.isAcknowledged() || !clone.isShardsAcknowledged()) {
+                logger.error("Cloning index {} to {} was not successful:\n\t\t\t\t\t\t\t\t\t\t\t\t\t" +
+                                "Acknowledged:{}\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:{}"
+                        , source, target, clone.isAcknowledged(), clone.isShardsAcknowledged());
+                throw new CouldNotCloneIndex(String.format("Cloning index %s to %s was not successful:\n\t\t\t\t\t\t\t\t\t\t\t\t\t" +
+                                "Acknowledged:%s\n\t\t\t\t\t\t\t\t\t\t\t\t\tShardsAcknowledged:%s"
+                        , source, target, clone.isAcknowledged(), clone.isShardsAcknowledged()));
+            }
+        } catch (ElasticsearchException | IOException e) {
+            logger.error("Could not clone index {} to {}", source, target);
+            logger.error(e.getLocalizedMessage());
+            throw new CouldNotCloneIndex(String.format("Could not clone index %s to %s", source, target));
+        }
+    }
+
+    public boolean indexExists(String indexName) throws CouldNotSearchForIndex {
+        GetIndexRequest getIndexRequest = new GetIndexRequest(indexName);
+        boolean exists;
+        try {
+            exists = indexer.clientES.indices().exists(getIndexRequest, RequestOptions.DEFAULT);
+        } catch (ElasticsearchException | IOException e) {
+            logger.error("Something went wrong when searching for index: " + indexName);
+            logger.error(e.getLocalizedMessage());
+            throw new CouldNotSearchForIndex(String.format("Something went wrong when searching for index: {}\n{}",indexName,e.getLocalizedMessage()));
+        }
+        return exists;
+    }
+
+
+    public void setWriteBlockOnIndex(boolean block, String indexName) throws CouldNotSetSettingsOfIndex {
+        UpdateSettingsRequest settingsRequest = new UpdateSettingsRequest(indexName);
+        Settings settings = Settings.builder().put("index.blocks.write", block).build();
+        settingsRequest.settings(settings);
+        try {
+            indexer.clientES.indices().putSettings(settingsRequest, RequestOptions.DEFAULT);
+        } catch (ElasticsearchException | IOException e) {
+            logger.error("Could not set index.blocks.write={} on index {}", block, indexName);
+            logger.error(e.getLocalizedMessage());
+            throw new CouldNotSetSettingsOfIndex(String.format("Could not set index.blocks.write={} on index {}", block, indexName));
+        }
     }
 }

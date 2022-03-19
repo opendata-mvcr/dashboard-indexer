@@ -12,7 +12,6 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.riot.RiotException;
-
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.ActionListener;
@@ -25,7 +24,6 @@ import org.elasticsearch.action.admin.indices.shrink.ResizeType;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
-
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.get.GetRequest;
@@ -38,16 +36,15 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.app.api.server.entities.UpdateRecord;
 import org.elasticsearch.app.api.server.entities.UpdateStates;
+import org.elasticsearch.app.api.server.exceptions.CouldNotCloneIndex;
+import org.elasticsearch.app.api.server.exceptions.CouldNotSearchForIndex;
+import org.elasticsearch.app.api.server.exceptions.CouldNotSetSettingsOfIndex;
 import org.elasticsearch.app.api.server.scheduler.RunningHarvester;
 import org.elasticsearch.app.logging.ESLogger;
-
 import org.elasticsearch.app.logging.Loggers;
-
-
 import org.elasticsearch.app.support.ESNormalizer;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
-
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -60,8 +57,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-
-import java.util.concurrent.*;
+import java.util.concurrent.TimeUnit;
 
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
@@ -75,6 +71,7 @@ public class Harvester implements Runnable, RunningHarvester {
 
     private boolean synced = false;
     private boolean failed = false;
+    private boolean incrementally = false;
 
     private enum QueryType {
         SELECT,
@@ -562,6 +559,11 @@ public class Harvester implements Runnable, RunningHarvester {
         return this;
     }
 
+    public Harvester setIncrementally(boolean incrementally) {
+        this.incrementally = incrementally;
+        return this;
+    }
+
     public Harvester rdfStartTime(String startTime) {
         this.lastupdateDate = startTime;
         return this;
@@ -677,23 +679,12 @@ public class Harvester implements Runnable, RunningHarvester {
 
                 if (lastupdateDate.isEmpty()) lastupdateDate = getLastUpdate();
 
-                //delete leftover temporary index if exists
-                try {
-                    AcknowledgedResponse delete = client.indices().delete(new DeleteIndexRequest(indexWithPrefix), RequestOptions.DEFAULT);
-                    if (delete.isAcknowledged()) logger.warn("Deleted {} before indexing", indexWithPrefix);
-                } catch (IOException e) {
-                    logger.error("Could not delete index {} before indexing", indexWithPrefix);
-                    stop();
-                    failed = true;
-                    break;
-                } catch (ElasticsearchException e) {
-                    if (e.status() != RestStatus.NOT_FOUND) {
-                        logger.error("Could not delete index {} before indexing", indexWithPrefix);
-                        stop();
-                        failed = true;
-                        break;
-                    }
+                deleteTempIndexIfExists();
+
+                if (incrementally) {
+                    copyCurrentIndexAsTempIndex();
                 }
+
                 setHarvestState(HarvestStates.HARVESTING_ENDPOINT);
                 if (indexAll && !synced)
                     success = runIndexAll();
@@ -775,10 +766,31 @@ public class Harvester implements Runnable, RunningHarvester {
 
 
         logger.info("Thread closed");
-		/* Any code after this step would not be executed as
-		   the master will interrupt the harvester thread after
-		   deleting the _river.
-		 */
+    }
+
+    private void copyCurrentIndexAsTempIndex() throws CouldNotCloneIndex, CouldNotSearchForIndex, CouldNotSetSettingsOfIndex {
+        indexer.dashboardManager.cloneIndexes(indexName, indexWithPrefix);
+
+        indexer.dashboardManager.setWriteBlockOnIndex(false, indexWithPrefix);
+    }
+
+    private void deleteTempIndexIfExists() throws IOException, ElasticsearchException {
+        try {
+            AcknowledgedResponse delete = client.indices().delete(new DeleteIndexRequest(indexWithPrefix), RequestOptions.DEFAULT);
+            if (delete.isAcknowledged()) logger.warn("Deleted {} before indexing", indexWithPrefix);
+        } catch (IOException e) {
+            logger.error("Could not delete index {} before indexing", indexWithPrefix);
+            stop();
+            failed = true;
+            throw e;
+        } catch (ElasticsearchException e) {
+            if (e.status() != RestStatus.NOT_FOUND) {
+                logger.error("Could not delete index {} before indexing", indexWithPrefix);
+                stop();
+                failed = true;
+                throw e;
+            }
+        }
     }
 
     private void renameIndex() {
