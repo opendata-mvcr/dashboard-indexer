@@ -166,10 +166,14 @@ public class ConfigManager {
         if (dashboardManager.indexExists(newIndexName))
             throw new CouldNotRenameConfigsIndex("The new index name [{}] already exists in kibana.");
 
-        dashboardManager.cloneIndexes(oldIndexName, newIndexName);
+        boolean oldIndexExists = dashboardManager.indexExists(oldIndexName);
+        if (oldIndexExists)
+            dashboardManager.cloneIndexes(oldIndexName, newIndexName);
+
         riverRef.setRiverName(newIndexName);
         riverDAO.save(riverRef);
-        dashboardManager.deleteIndex(oldIndexName);
+        if (oldIndexExists)
+            dashboardManager.deleteIndex(oldIndexName);
     }
 
     public Map<String, String> getRunning() {

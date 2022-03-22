@@ -769,6 +769,7 @@ public class Harvester implements Runnable, RunningHarvester {
     }
 
     private void copyCurrentIndexAsTempIndex() throws CouldNotCloneIndex, CouldNotSearchForIndex, CouldNotSetSettingsOfIndex {
+        if (!indexer.dashboardManager.indexExists(indexName)) return;
         indexer.dashboardManager.cloneIndexes(indexName, indexWithPrefix);
 
         indexer.dashboardManager.setWriteBlockOnIndex(false, indexWithPrefix);
