@@ -77,6 +77,9 @@ public class River {
 
     public River setRiverName(String riverName) {
         this.riverName = riverName;
+        Map<String, Object> riverSettings = getRiverSettings();
+        ((Map<String, Object>) riverSettings.get("index")).put("index", riverName);
+        setRiverSettings(riverSettings);
         return this;
     }
 

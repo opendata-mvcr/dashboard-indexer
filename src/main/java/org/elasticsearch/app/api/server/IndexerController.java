@@ -70,7 +70,7 @@ public class IndexerController {
         return indexName;
     }
 
-    @PutMapping(path = "/{oldIndexName}/_rename/{newIndexName}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(path = "/{oldIndexName}/_rename/{newIndexName}")
     @ResponseStatus(HttpStatus.OK)
     public String renameConfigsIndex(@PathVariable String oldIndexName, @PathVariable String newIndexName) {
         configManager.renameIndex(oldIndexName, newIndexName);

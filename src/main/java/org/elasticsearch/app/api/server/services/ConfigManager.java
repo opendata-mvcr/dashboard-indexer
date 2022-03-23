@@ -83,8 +83,8 @@ public class ConfigManager {
 
             river.setAutomaticScheduling((boolean) scheduleMap.get("automatic"));
             river.setSchedule(scheduleMap.get("schedule").toString());
-            river.setRiverName(name);
             river.setRiverSettings(config);
+            river.setRiverName(name);
             river.setIndexIncrementally(indexIncrementally);
         } catch (Exception e) {
             throw new ParsingException("Could not create config from JSON");
