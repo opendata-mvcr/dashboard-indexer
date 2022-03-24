@@ -162,9 +162,9 @@ public class ConfigManager {
     public void renameIndex(String oldIndexName, String newIndexName) throws ConfigNotFoundException, CouldNotCloneIndex, CouldNotSearchForIndex, CouldNotSetSettingsOfIndex, ConnectionLost {
         River riverRef = getRiverRef(oldIndexName);
         if (riverDAO.existsByRiverName(newIndexName))
-            throw new CouldNotRenameConfigsIndex("The new index name [{}] is already used in different config.");
+            throw new CouldNotRenameConfigsIndex("The new index name [" + newIndexName + "] is already used in different config.");
         if (dashboardManager.indexExists(newIndexName))
-            throw new CouldNotRenameConfigsIndex("The new index name [{}] already exists in kibana.");
+            throw new CouldNotRenameConfigsIndex("The new index name [" + newIndexName + "] already exists in kibana.");
 
         boolean oldIndexExists = dashboardManager.indexExists(oldIndexName);
         if (oldIndexExists)

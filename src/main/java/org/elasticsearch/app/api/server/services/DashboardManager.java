@@ -125,7 +125,7 @@ public class DashboardManager {
 
     public void cloneIndexes(String source, String target) throws CouldNotCloneIndex, CouldNotSearchForIndex, CouldNotSetSettingsOfIndex {
         if (!indexExists(source))
-            throw new CouldNotCloneIndex(String.format("Source index [{}] not found.", source, target, source));
+            throw new CouldNotCloneIndex(String.format("Source index [{}] not found.", source));
         setWriteBlockOnIndex(true, source);
         ResizeRequest cloneRequest = new ResizeRequest(target, source);
         cloneRequest.setResizeType(ResizeType.CLONE);
@@ -142,7 +142,7 @@ public class DashboardManager {
         } catch (ElasticsearchException | IOException e) {
             logger.error("Could not clone index {} to {}", source, target);
             logger.error(e.getLocalizedMessage());
-            throw new CouldNotCloneIndex(String.format("Could not clone index %s to %s", source, target));
+            throw new CouldNotCloneIndex(String.format("Could not clone index {} to {}", source, target));
         }
     }
 
