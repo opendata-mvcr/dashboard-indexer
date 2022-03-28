@@ -231,7 +231,8 @@ If you only changed `.env`, `docker-compose.yml` or `docker-compose-auth.yml` ju
 from [Installation](#installation) step 2. of your deployment.
 
 If your application doesn't start after update, try deleting docker
-volume `indexerDB` ([Docker remove volume](https://docs.docker.com/engine/reference/commandline/volume_rm/)).
+volume `indexerDB` ([Docker remove volume](https://docs.docker.com/engine/reference/commandline/volume_rm/)). Then
+execute command(s) from [Installation](#installation) step 2. of your deployment.
 
 # Transfer data
 
