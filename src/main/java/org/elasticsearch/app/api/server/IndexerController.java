@@ -46,7 +46,6 @@ public class IndexerController {
     }
 
     @GetMapping("/configs/{indexName}")
-    @ExceptionHandler
     public Map<String, Object> getConfig(@PathVariable String indexName) {
         return configManager.getConfig(indexName);
     }
@@ -58,7 +57,6 @@ public class IndexerController {
 
     @PutMapping(path = "/configs", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @ExceptionHandler
     public String saveConfig(@RequestBody String jsonConfig) {
         River river = configManager.save(jsonConfig);
         return river.getRiverName();
@@ -66,7 +64,6 @@ public class IndexerController {
 
     @PutMapping(path = "/configAndIndex", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @ExceptionHandler
     public String saveConfigAndStart(@RequestBody String jsonConfig) {
         String indexName = saveConfig(jsonConfig);
         startIndex(indexName);
@@ -75,7 +72,6 @@ public class IndexerController {
 
     @PutMapping(path = "/{oldIndexName}/_rename/{newIndexName}")
     @ResponseStatus(HttpStatus.OK)
-    @ExceptionHandler
     public String renameConfigsIndex(@PathVariable String oldIndexName, @PathVariable String newIndexName) {
         configManager.renameIndex(oldIndexName, newIndexName);
         return newIndexName;
@@ -83,7 +79,6 @@ public class IndexerController {
 
     @PostMapping("/configs/{indexName}/start")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @ExceptionHandler
     public void startIndex(@PathVariable String indexName) {
         River river = configManager.getRiverRef(indexName);
         if (configManager.isRunning(river.getRiverName())) {
@@ -93,25 +88,21 @@ public class IndexerController {
     }
 
     @PostMapping("/configs/{indexName}/stop")
-    @ExceptionHandler
     public void stopIndex(@PathVariable String indexName) {
         configManager.stopIndexing(indexName);
     }
 
     @PostMapping("/{source}/_clone/{target}")
-    @ExceptionHandler
     public void cloneIndex(@PathVariable String source, @PathVariable String target) {
         dashboardManager.cloneIndexes(source, target);
     }
 
     @PostMapping("/import/configs")
-    @ExceptionHandler
     public List<Integer> importConfigs(@RequestBody List<String> jsonConfig) {
         return configManager.setAllConfigs(jsonConfig);
     }
 
     @DeleteMapping("/configs/{indexName}")
-    @ExceptionHandler
     public void deleteIndex(@PathVariable String indexName, @RequestParam(required = false, defaultValue = "false") boolean deleteData) {
         configManager.delete(indexName, deleteData);
     }
