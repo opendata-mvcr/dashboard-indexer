@@ -6,7 +6,7 @@ public interface RunningHarvester {
 
     void stop();
 
-    String getIndexName();
+    long getConfigId();
 
     HarvestStates getHarvestState();
 }

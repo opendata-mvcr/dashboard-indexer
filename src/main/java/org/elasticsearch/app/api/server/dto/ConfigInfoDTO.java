@@ -7,14 +7,20 @@ import java.util.List;
 import java.util.Map;
 
 public class ConfigInfoDTO {
-    private String name;
-    private Map<String, String>  dashboards;
-    private List<UpdateRecord> lastSuccessAndLastTenUpdateRecords;
+    private final long id;
+    private final String name;
+    private final Map<String, String> dashboards;
+    private final List<UpdateRecord> lastSuccessAndLastTenUpdateRecords;
 
-    public ConfigInfoDTO(River river, Map<String, String>  dashboards) {
-        this.name=river.getRiverName();
-        this.dashboards=dashboards;
-        this.lastSuccessAndLastTenUpdateRecords=river.getLastSuccessAndLastTenUpdateRecords();
+    public ConfigInfoDTO(River river, Map<String, String> dashboards) {
+        this.id = river.getId();
+        this.name = river.getRiverName();
+        this.dashboards = dashboards;
+        this.lastSuccessAndLastTenUpdateRecords = river.getLastSuccessAndLastTenUpdateRecords();
+    }
+
+    public long getId() {
+        return id;
     }
 
     public String getName() {

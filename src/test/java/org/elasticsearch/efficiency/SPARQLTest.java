@@ -7,8 +7,9 @@ import org.elasticsearch.app.api.server.entities.UpdateRecord;
 import org.elasticsearch.app.api.server.entities.UpdateStates;
 import org.elasticsearch.app.api.server.exceptions.ConnectionLost;
 import org.elasticsearch.app.api.server.services.DashboardManager;
-import org.junit.*;
-import org.junit.rules.Timeout;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,7 +39,7 @@ public abstract class SPARQLTest {
     @After
     public void afterTest() {
         System.out.println("\n\n----------------------------Deleting indexes from ES----------------------------\n\n");
-        indexerController.getConfigs().forEach(c -> indexerController.deleteIndex(c.getName(), true));
+        indexerController.getConfigs().forEach(c -> indexerController.deleteIndex(c.getId(), true));
     }
 
 
@@ -47,19 +48,19 @@ public abstract class SPARQLTest {
         String config = createQuery(query, endpoint, queryType, limit, indexName);
 
         System.out.println("Saving config");
-        indexerController.saveConfig(config);
-        Assert.assertNotNull(indexerController.getConfig(indexName));
+        long configId = indexerController.saveConfig(config);
+        Assert.assertNotNull(indexerController.getConfig(configId));
         System.out.println("Starting config indexing");
-        indexerController.startIndex(indexName);
+        indexerController.startIndex(configId);
         TimeUnit.MILLISECONDS.sleep(100);
-        Assert.assertTrue(indexerController.runningHarvests().containsKey(indexName));
+        Assert.assertTrue(indexerController.runningHarvests().containsKey(configId));
         System.out.println("Indexing is running");
 
         //Simulating frontend requests
         while (true) {
             TimeUnit.MILLISECONDS.sleep(10);
             indexerController.runningHarvests();
-            if (!indexerController.runningHarvests().containsKey(indexName))
+            if (!indexerController.runningHarvests().containsKey(configId))
                 break;
         }
         System.out.println("Indexed");

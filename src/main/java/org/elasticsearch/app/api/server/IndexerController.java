@@ -3,7 +3,6 @@ package org.elasticsearch.app.api.server;
 import org.elasticsearch.app.Indexer;
 import org.elasticsearch.app.api.server.dto.ConfigInfoDTO;
 import org.elasticsearch.app.api.server.entities.River;
-import org.elasticsearch.app.api.server.exceptions.AlreadyRunningException;
 import org.elasticsearch.app.api.server.services.ConfigManager;
 import org.elasticsearch.app.api.server.services.DashboardManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,13 +40,13 @@ public class IndexerController {
     }
 
     @GetMapping("/running")
-    public Map<String, String> runningHarvests() {
+    public Map<Long, String> runningHarvests() {
         return configManager.getRunning();
     }
 
-    @GetMapping("/configs/{indexName}")
-    public Map<String, Object> getConfig(@PathVariable String indexName) {
-        return configManager.getConfig(indexName);
+    @GetMapping("/configs/{configId}")
+    public Map<String, Object> getConfig(@PathVariable long configId) {
+        return configManager.getConfig(configId);
     }
 
     @GetMapping("/export/configs")
@@ -57,39 +56,35 @@ public class IndexerController {
 
     @PutMapping(path = "/configs", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public String saveConfig(@RequestBody String jsonConfig) {
+    public long saveConfig(@RequestBody String jsonConfig) {
         River river = configManager.save(jsonConfig);
-        return river.getRiverName();
+        return river.getId();
     }
 
     @PutMapping(path = "/configAndIndex", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public String saveConfigAndStart(@RequestBody String jsonConfig) {
-        String indexName = saveConfig(jsonConfig);
-        startIndex(indexName);
-        return indexName;
+    public long saveConfigAndStart(@RequestBody String jsonConfig) {
+        long configId = saveConfig(jsonConfig);
+        configManager.startIndexing(configId);
+        return configId;
     }
 
-    @PutMapping(path = "/{oldIndexName}/_rename/{newIndexName}")
+    @PatchMapping(path = "/configs/{configId}/indexName", consumes = MediaType.TEXT_PLAIN_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public String renameConfigsIndex(@PathVariable String oldIndexName, @PathVariable String newIndexName) {
-        configManager.renameIndex(oldIndexName, newIndexName);
+    public String renameConfigsIndex(@PathVariable long configId, @RequestBody String newIndexName) {
+        configManager.renameIndex(configId, newIndexName);
         return newIndexName;
     }
 
-    @PostMapping("/configs/{indexName}/start")
+    @PostMapping("/configs/{configId}/start")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public void startIndex(@PathVariable String indexName) {
-        River river = configManager.getRiverRef(indexName);
-        if (configManager.isRunning(river.getRiverName())) {
-            throw new AlreadyRunningException("Indexing of index '" + indexName + "', already running");
-        }
-        configManager.startIndexing(river);
+    public void startIndex(@PathVariable long configId) {
+        configManager.startIndexing(configId);
     }
 
-    @PostMapping("/configs/{indexName}/stop")
-    public void stopIndex(@PathVariable String indexName) {
-        configManager.stopIndexing(indexName);
+    @PostMapping("/configs/{configId}/stop")
+    public void stopIndex(@PathVariable long configId) {
+        configManager.stopIndexing(configId);
     }
 
     @PostMapping("/{source}/_clone/{target}")
@@ -102,8 +97,8 @@ public class IndexerController {
         return configManager.setAllConfigs(jsonConfig);
     }
 
-    @DeleteMapping("/configs/{indexName}")
-    public void deleteIndex(@PathVariable String indexName, @RequestParam(required = false, defaultValue = "false") boolean deleteData) {
-        configManager.delete(indexName, deleteData);
+    @DeleteMapping("/configs/{configId}")
+    public void deleteIndex(@PathVariable long configId, @RequestParam(required = false, defaultValue = "false") boolean deleteData) {
+        configManager.delete(configId, deleteData);
     }
 }
