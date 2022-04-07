@@ -3,7 +3,6 @@ package org.elasticsearch.app.api.server;
 import org.elasticsearch.app.Indexer;
 import org.elasticsearch.app.api.server.dto.ConfigInfoDTO;
 import org.elasticsearch.app.api.server.entities.River;
-import org.elasticsearch.app.api.server.exceptions.AlreadyRunningException;
 import org.elasticsearch.app.api.server.services.ConfigManager;
 import org.elasticsearch.app.api.server.services.DashboardManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,13 +40,13 @@ public class IndexerController {
     }
 
     @GetMapping("/running")
-    public Map<String, String> runningHarvests() {
+    public Map<Long, String> runningHarvests() {
         return configManager.getRunning();
     }
 
-    @GetMapping("/configs/{id}")
-    public Map<String, Object> getConfig(@PathVariable String id) {
-        return configManager.getConfig(id);
+    @GetMapping("/configs/{configId}")
+    public Map<String, Object> getConfig(@PathVariable long configId) {
+        return configManager.getConfig(configId);
     }
 
     @GetMapping("/export/configs")
@@ -57,32 +56,35 @@ public class IndexerController {
 
     @PutMapping(path = "/configs", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public String saveConfig(@RequestBody String jsonConfig) {
+    public long saveConfig(@RequestBody String jsonConfig) {
         River river = configManager.save(jsonConfig);
-        return river.getRiverName();
+        return river.getId();
     }
 
     @PutMapping(path = "/configAndIndex", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public String saveConfigAndStart(@RequestBody String jsonConfig) {
-        String id = saveConfig(jsonConfig);
-        startIndex(id);
-        return id;
+    public long saveConfigAndStart(@RequestBody String jsonConfig) {
+        long configId = saveConfig(jsonConfig);
+        configManager.startIndexing(configId);
+        return configId;
     }
 
-    @PostMapping("/configs/{id}/start")
+    @PatchMapping(path = "/configs/{configId}/indexName", consumes = MediaType.TEXT_PLAIN_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public String renameConfigsIndex(@PathVariable long configId, @RequestBody String newIndexName) {
+        configManager.renameIndex(configId, newIndexName);
+        return newIndexName;
+    }
+
+    @PostMapping("/configs/{configId}/start")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public void startIndex(@PathVariable String id) {
-        River river = configManager.getRiverRef(id);
-        if (configManager.isRunning(river.getRiverName())) {
-            throw new AlreadyRunningException("Indexing of index '" + id + "', already running");
-        }
-        configManager.startIndexing(river);
+    public void startIndex(@PathVariable long configId) {
+        configManager.startIndexing(configId);
     }
 
-    @PostMapping("/configs/{id}/stop")
-    public void stopIndex(@PathVariable String id) {
-        configManager.stopIndexing(id);
+    @PostMapping("/configs/{configId}/stop")
+    public void stopIndex(@PathVariable long configId) {
+        configManager.stopIndexing(configId);
     }
 
     @PostMapping("/{source}/_clone/{target}")
@@ -95,8 +97,8 @@ public class IndexerController {
         return configManager.setAllConfigs(jsonConfig);
     }
 
-    @DeleteMapping("/configs/{id}")
-    public void deleteIndex(@PathVariable String id, @RequestParam(required = false, defaultValue = "false") boolean deleteData) {
-        configManager.delete(id, deleteData);
+    @DeleteMapping("/configs/{configId}")
+    public void deleteIndex(@PathVariable long configId, @RequestParam(required = false, defaultValue = "false") boolean deleteData) {
+        configManager.delete(configId, deleteData);
     }
 }

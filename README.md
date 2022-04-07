@@ -216,6 +216,8 @@ from `docker-compose-auth.yml`. Then execute [update](#update) sequence.
 
 # Update
 
+<ins>*Backup your configs before updating by [exporting them](#transfer-indexer-configs).*</ins>
+
 To update your deployment just download new version from git repository (check if template of `.env` for your deployment
 changed in [Installation](#installation)). Then execute:
 
@@ -227,6 +229,10 @@ Solution: [docker image prune](https://docs.docker.com/engine/reference/commandl
 
 If you only changed `.env`, `docker-compose.yml` or `docker-compose-auth.yml` just execute command(s)
 from [Installation](#installation) step 2. of your deployment.
+
+If your application doesn't start after update, try deleting docker
+volume `indexerDB` ([Docker remove volume](https://docs.docker.com/engine/reference/commandline/volume_rm/)). Then
+execute command(s) from [Installation](#installation) step 2. of your deployment.
 
 # Transfer data
 

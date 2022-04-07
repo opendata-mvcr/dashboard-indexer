@@ -17,7 +17,10 @@ public class River {
     private static final Logger logger = LoggerFactory.getLogger(River.class);
 
     @Id
-    @Column(nullable = false)
+    @GeneratedValue
+    private long id;
+
+    @Column(nullable = false, unique = true)
     private String riverName;
 
     @Lob
@@ -28,7 +31,7 @@ public class River {
     @Basic
     private String schedule;
 
-    @Column
+    @Column(nullable = false, columnDefinition = "boolean default false")
     @Basic
     private boolean automaticScheduling;
 
@@ -44,6 +47,10 @@ public class River {
     private Map<String, Object> riverSettings;
 
     public River() {
+    }
+
+    public long getId() {
+        return id;
     }
 
     public boolean isAutomatic() {
@@ -70,6 +77,9 @@ public class River {
 
     public River setRiverName(String riverName) {
         this.riverName = riverName;
+        Map<String, Object> riverSettings = getRiverSettings();
+        ((Map<String, Object>) riverSettings.get("index")).put("index", riverName);
+        setRiverSettings(riverSettings);
         return this;
     }
 

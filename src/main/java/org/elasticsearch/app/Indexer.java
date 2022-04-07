@@ -68,7 +68,7 @@ public class Indexer {
             Harvester h = new Harvester();
 
             h.client(clientES)
-                    .riverName(river.getRiverName())
+                    .river(river)
                     .riverIndex(riverIndex)
                     .setIncrementally(river.isIndexIncrementally())
                     .indexer(this);

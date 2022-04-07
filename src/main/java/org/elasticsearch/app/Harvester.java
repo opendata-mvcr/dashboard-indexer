@@ -34,6 +34,7 @@ import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.action.support.replication.ReplicationResponse;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
+import org.elasticsearch.app.api.server.entities.River;
 import org.elasticsearch.app.api.server.entities.UpdateRecord;
 import org.elasticsearch.app.api.server.entities.UpdateStates;
 import org.elasticsearch.app.api.server.exceptions.CouldNotCloneIndex;
@@ -144,8 +145,8 @@ public class Harvester implements Runnable, RunningHarvester {
     private RestHighLevelClient client;
 
     @Override
-    public String getIndexName() {
-        return indexName;
+    public long getConfigId() {
+        return river.getId();
     }
 
     private String indexName;
@@ -153,6 +154,7 @@ public class Harvester implements Runnable, RunningHarvester {
     private String statusIndex;
 
     private String riverName;
+    private River river;
     private String riverIndex;
 
 
@@ -543,8 +545,9 @@ public class Harvester implements Runnable, RunningHarvester {
         return this;
     }
 
-    public Harvester riverName(String riverName) {
-        this.riverName = riverName;
+    public Harvester river(River river) {
+        this.riverName = river.getRiverName();
+        this.river=river;
         return this;
     }
 
@@ -769,6 +772,7 @@ public class Harvester implements Runnable, RunningHarvester {
     }
 
     private void copyCurrentIndexAsTempIndex() throws CouldNotCloneIndex, CouldNotSearchForIndex, CouldNotSetSettingsOfIndex {
+        if (!indexer.dashboardManager.indexExists(indexName)) return;
         indexer.dashboardManager.cloneIndexes(indexName, indexWithPrefix);
 
         indexer.dashboardManager.setWriteBlockOnIndex(false, indexWithPrefix);
@@ -1671,8 +1675,8 @@ public class Harvester implements Runnable, RunningHarvester {
         } catch (Exception e) {
             logger.error("Harvesting failed on {}. query on index [{}] and type [{}]",
                     queryNumber, indexName, typeName);
-            logger.error("Query:\n{}", rdfQueries.get(queryNumber - 1));
             logger.error("Exception: {}", e.getLocalizedMessage());
+            logger.error("Query:\n{}", rdfQueries.get(queryNumber - 1));
             throw e;
         } finally {
             qExec.close();
