@@ -56,6 +56,9 @@ import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 
 import java.io.IOException;
+import java.net.IDN;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -218,7 +221,16 @@ public class Harvester implements Runnable, RunningHarvester {
      * parameter set
      */
     public Harvester rdfEndpoint(String endpoint) {
-        rdfEndpoint = endpoint;
+        try {
+            URL url = new URL(endpoint);
+            String host = IDN.toASCII(url.getHost());
+            url = new URL(url.getProtocol(), host, url.getPort(), url.getFile());
+            rdfEndpoint = url.toString();
+        } catch (MalformedURLException e) {
+            logger.warn("Could not convert endpoint to URL. Using provided string: " + endpoint);
+            logger.warn(e.getLocalizedMessage());
+            rdfEndpoint = endpoint;
+        }
         return this;
     }
 
@@ -547,7 +559,7 @@ public class Harvester implements Runnable, RunningHarvester {
 
     public Harvester river(River river) {
         this.riverName = river.getRiverName();
-        this.river=river;
+        this.river = river;
         return this;
     }
 
